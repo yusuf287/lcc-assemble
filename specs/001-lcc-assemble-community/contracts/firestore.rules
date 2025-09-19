@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Users can update their own profile (except role and status)
+      allow update: if request.auth != null && request.auth.uid == userId &&
+        // Prevent users from changing their role or status
+        !(request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status']));
+
+      // New user registration (status will be 'pending')
+      allow create: if request.auth != null && request.auth.uid == userId;
+
+      // All authenticated users can read basic profile info for member directory
+      allow read: if request.auth != null;
+
+      // Admins can read and update all user profiles
+      allow read, update: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Events collection
+    match /events/{eventId} {
+      // All authenticated users can read events
+      allow read: if request.auth != null;
+
+      // Users can create events
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.organizer;
+
+      // Organizers can update their own events
+      allow update: if request.auth != null && request.auth.uid == resource.data.organizer;
+
+      // Admins can update any event
+      allow update: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+
+      // Organizers and admins can delete events
+      allow delete: if request.auth != null &&
+        (request.auth.uid == resource.data.organizer ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    // Notifications collection
+    match /notifications/{notificationId} {
+      // Users can read their own notifications
+      allow read: if request.auth != null && request.auth.uid == resource.data.recipientId;
+
+      // System can create notifications for users
+      allow create: if request.auth != null;
+
+      // Users can update read status of their notifications
+      allow update: if request.auth != null && request.auth.uid == resource.data.recipientId &&
+        // Only allow updating read status
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+
+      // Users can delete their own notifications
+      allow delete: if request.auth != null && request.auth.uid == resource.data.recipientId;
+    }
+  }
+}

@@ -1,0 +1,41 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // User profile images
+    match /users/{userId}/profile/{fileName} {
+      // Users can upload their own profile images
+      allow write: if request.auth != null && request.auth.uid == userId &&
+        // Only allow image files
+        request.resource.contentType.matches('image/.*') &&
+        // Size limit: 5MB
+        request.resource.size < 5 * 1024 * 1024;
+
+      // Users can read their own profile images
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // All authenticated users can read profile images (for member directory)
+      allow read: if request.auth != null;
+    }
+
+    // Event images
+    match /events/{eventId}/{fileName} {
+      // Event organizers can upload images to their events
+      allow write: if request.auth != null &&
+        firestore.exists(/databases/(default)/documents/events/$(eventId)) &&
+        firestore.get(/databases/(default)/documents/events/$(eventId)).data.organizer == request.auth.uid &&
+        // Only allow image files
+        request.resource.contentType.matches('image/.*') &&
+        // Size limit: 10MB per image
+        request.resource.size < 10 * 1024 * 1024;
+
+      // Admins can upload to any event
+      allow write: if request.auth != null &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
+        request.resource.contentType.matches('image/.*') &&
+        request.resource.size < 10 * 1024 * 1024;
+
+      // All authenticated users can read event images
+      allow read: if request.auth != null;
+    }
+  }
+}
