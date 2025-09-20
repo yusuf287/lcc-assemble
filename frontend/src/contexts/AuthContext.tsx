@@ -154,14 +154,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (email: string, password: string, displayName: string, profileData?: any): Promise<void> => {
     try {
       setError(null)
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      console.log('🔥 Starting registration process...')
+      console.log('📧 Email:', email)
+      console.log('👤 Display Name:', displayName)
 
-      // Update Firebase Auth profile
+      // Step 1: Create Firebase Auth user
+      console.log('🔥 Creating Firebase Auth user...')
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      console.log('✅ Firebase Auth user created:', userCredential.user.uid)
+
+      // Step 2: Update Firebase Auth profile
+      console.log('🔥 Updating Firebase Auth profile...')
       await updateProfile(userCredential.user, {
         displayName: displayName
       })
+      console.log('✅ Firebase Auth profile updated')
 
-      // Create comprehensive user profile in Firestore
+      // Step 3: Create comprehensive user profile in Firestore
+      console.log('🔥 Creating Firestore user document...')
       const userDocRef = doc(db, 'users', userCredential.user.uid)
       const userData = {
         uid: userCredential.user.uid,
@@ -193,19 +203,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         updatedAt: new Date()
       }
 
+      console.log('🔥 User data to save:', userData)
       await setDoc(userDocRef, userData)
+      console.log('✅ Firestore user document created')
 
-      // Send email verification
+      // Step 4: Send email verification
+      console.log('🔥 Sending email verification...')
       await sendEmailVerification(userCredential.user)
+      console.log('✅ Email verification sent')
+
+      console.log('🎉 Registration completed successfully!')
 
     } catch (error: any) {
-      console.error('Registration error:', error)
+      console.error('❌ Registration error:', error)
+      console.error('❌ Error code:', error.code)
+      console.error('❌ Error message:', error.message)
+
       const errorMessage = error.code === 'auth/email-already-in-use'
         ? 'This email is already registered. Please try logging in instead.'
         : error.code === 'auth/weak-password'
         ? 'Password is too weak. Please choose a stronger password.'
         : error.code === 'auth/invalid-email'
         ? 'Please enter a valid email address.'
+        : error.code === 'permission-denied'
+        ? 'Permission denied. Please check Firestore security rules.'
+        : error.code === 'unavailable'
+        ? 'Service temporarily unavailable. Please try again later.'
         : error.message || 'Registration failed. Please try again.'
 
       setError(errorMessage)

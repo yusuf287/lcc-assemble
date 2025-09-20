@@ -69,13 +69,22 @@ const RegistrationPage: React.FC = () => {
   const onSubmit = async (data: UserRegistrationForm) => {
     try {
       setIsLoading(true)
+      console.log('🚀 Starting registration submission...')
+      console.log('📝 Form data:', data)
 
       // Clear any previous errors
-      if (clearError) clearError()
+      if (clearError) {
+        clearError()
+        console.log('🧹 Cleared previous errors')
+      }
 
       // Final validation check
+      console.log('🔍 Running final validation...')
       const isFormValid = await trigger()
+      console.log('✅ Form validation result:', isFormValid)
+
       if (!isFormValid) {
+        console.log('❌ Form validation failed')
         toast.error('Please fill in all required fields correctly.')
         setIsLoading(false)
         return
@@ -83,7 +92,9 @@ const RegistrationPage: React.FC = () => {
 
       // Generate a secure temporary password
       const tempPassword = Math.random().toString(36).slice(-12) + 'A1!'
+      console.log('🔑 Generated temporary password')
 
+      console.log('📤 Calling register function...')
       await register(
         data.email,
         tempPassword,
@@ -99,19 +110,28 @@ const RegistrationPage: React.FC = () => {
         }
       )
 
+      console.log('🎉 Registration successful!')
       toast.success(`Registration successful! Your temporary password is: ${tempPassword}`)
       toast.success('Please check your email to verify your account.')
       navigate('/login')
     } catch (error: any) {
-      console.error('Registration error:', error)
+      console.error('❌ Registration submission error:', error)
+      console.error('❌ Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      })
 
       // Error is already handled by AuthContext and displayed via toast
       // The AuthContext sets the error state which will be displayed
       if (error.message) {
         toast.error(error.message)
+      } else {
+        toast.error('Registration failed. Please try again.')
       }
     } finally {
       setIsLoading(false)
+      console.log('🏁 Registration submission completed')
     }
   }
 
