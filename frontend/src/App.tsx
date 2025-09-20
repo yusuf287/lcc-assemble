@@ -1,5 +1,12 @@
 import React from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  createBrowserRouter,
+  RouterProvider
+} from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Toaster } from 'react-hot-toast'
 
@@ -195,7 +202,12 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <Router
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true
+        }}
+      >
         <AppLayout>
           <Routes>
             {/* Test Route - No Auth Required */}

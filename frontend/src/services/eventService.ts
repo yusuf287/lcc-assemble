@@ -270,59 +270,129 @@ export const searchEvents = async (
   startAfterDoc?: QueryDocumentSnapshot
 ): Promise<EventSearchResult> => {
   try {
-    let q = query(collection(db, EVENTS_COLLECTION))
+    console.log('🔍 Searching events with filters:', filters)
 
-    // Apply filters
-    if (filters.status && filters.status.length > 0) {
-      q = query(q, where('status', 'in', filters.status))
-    }
+    // Try the optimized query first
+    try {
+      let q = query(collection(db, EVENTS_COLLECTION))
 
-    if (filters.visibility && filters.visibility.length > 0) {
-      q = query(q, where('visibility', 'in', filters.visibility))
-    }
+      // Apply filters
+      if (filters.status && filters.status.length > 0) {
+        q = query(q, where('status', 'in', filters.status))
+      }
 
-    if (filters.type && filters.type.length > 0) {
-      q = query(q, where('type', 'in', filters.type))
-    }
+      if (filters.visibility && filters.visibility.length > 0) {
+        q = query(q, where('visibility', 'in', filters.visibility))
+      }
 
-    // Apply ordering
-    q = query(q, orderBy('dateTime', 'asc'))
+      if (filters.type && filters.type.length > 0) {
+        q = query(q, where('type', 'in', filters.type))
+      }
 
-    // Apply pagination
-    if (startAfterDoc) {
-      q = query(q, startAfter(startAfterDoc))
-    }
+      // Apply ordering
+      q = query(q, orderBy('dateTime', 'asc'))
 
-    q = query(q, limit(pageSize))
+      // Apply pagination
+      if (startAfterDoc) {
+        q = query(q, startAfter(startAfterDoc))
+      }
 
-    const querySnapshot = await getDocs(q)
-    const events: EventSummary[] = []
+      q = query(q, limit(pageSize))
 
-    querySnapshot.forEach((doc) => {
-      const data = doc.data()
-      events.push({
-        id: doc.id,
-        title: data.title,
-        type: data.type,
-        visibility: data.visibility,
-        organizer: data.organizer,
-        dateTime: timestampToDate(data.dateTime).toISOString(),
-        location: data.location,
-        capacity: data.capacity,
-        attendeeCount: Object.keys(data.attendees || {}).length,
-        coverImage: data.coverImage,
-        status: data.status
+      const querySnapshot = await getDocs(q)
+      const events: EventSummary[] = []
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data()
+        events.push({
+          id: doc.id,
+          title: data.title,
+          type: data.type,
+          visibility: data.visibility,
+          organizer: data.organizer,
+          dateTime: timestampToDate(data.dateTime).toISOString(),
+          location: data.location,
+          capacity: data.capacity,
+          attendeeCount: Object.keys(data.attendees || {}).length,
+          coverImage: data.coverImage,
+          status: data.status
+        })
       })
-    })
 
-    return {
-      events,
-      totalCount: events.length, // Simplified - would need aggregation for total count
-      hasMore: querySnapshot.size === pageSize
+      console.log(`✅ Found ${events.length} events (optimized query)`)
+      return {
+        events,
+        totalCount: events.length,
+        hasMore: querySnapshot.size === pageSize
+      }
+    } catch (indexError: any) {
+      // If index error occurs, fall back to client-side filtering
+      if (indexError.message?.includes('index')) {
+        console.warn('⚠️ Firestore index not ready, using client-side filtering')
+
+        // Fallback: Get all events and filter client-side
+        const fallbackQuery = query(collection(db, EVENTS_COLLECTION), limit(100))
+        const querySnapshot = await getDocs(fallbackQuery)
+        let events: EventSummary[] = []
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data()
+          events.push({
+            id: doc.id,
+            title: data.title,
+            type: data.type,
+            visibility: data.visibility,
+            organizer: data.organizer,
+            dateTime: timestampToDate(data.dateTime).toISOString(),
+            location: data.location,
+            capacity: data.capacity,
+            attendeeCount: Object.keys(data.attendees || {}).length,
+            coverImage: data.coverImage,
+            status: data.status
+          })
+        })
+
+        // Apply client-side filters
+        if (filters.status && filters.status.length > 0) {
+          events = events.filter(event => filters.status!.includes(event.status))
+        }
+
+        if (filters.visibility && filters.visibility.length > 0) {
+          events = events.filter(event => filters.visibility!.includes(event.visibility))
+        }
+
+        if (filters.type && filters.type.length > 0) {
+          events = events.filter(event => filters.type!.includes(event.type))
+        }
+
+        // Apply sorting
+        events.sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
+
+        // Apply pagination
+        const startIndex = startAfterDoc ? events.findIndex(e => e.id === startAfterDoc.id) + 1 : 0
+        const paginatedEvents = events.slice(startIndex, startIndex + pageSize)
+
+        console.log(`✅ Found ${paginatedEvents.length} events (client-side filtered)`)
+        return {
+          events: paginatedEvents,
+          totalCount: events.length,
+          hasMore: startIndex + pageSize < events.length
+        }
+      } else {
+        // Re-throw non-index errors
+        throw indexError
+      }
     }
-  } catch (error) {
-    console.error('Error searching events:', error)
-    throw new Error('Failed to search events')
+  } catch (error: any) {
+    console.error('❌ Error searching events:', error)
+
+    // Provide user-friendly error message
+    if (error.message?.includes('index')) {
+      console.warn('⚠️ Database index being created. Please wait a few minutes and try again.')
+      throw new Error('Database is being optimized. Please wait a few minutes and try again.')
+    }
+
+    throw new Error('Failed to search events. Please try again.')
   }
 }
 

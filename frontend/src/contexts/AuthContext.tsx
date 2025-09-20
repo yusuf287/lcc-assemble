@@ -116,8 +116,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null)
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
 
-      // Check if email is verified
-      if (!userCredential.user.emailVerified) {
+      // DEVELOPMENT MODE: Skip email verification for testing
+      if (import.meta.env.DEV && import.meta.env.VITE_SKIP_EMAIL_VERIFICATION === 'true') {
+        console.log('🔧 DEVELOPMENT: Skipping email verification check')
+      } else if (!userCredential.user.emailVerified) {
         await signOut(auth)
         throw new Error('Please verify your email before logging in. Check your inbox for the verification link.')
       }
@@ -276,6 +278,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       console.error('Profile update error:', error)
       throw new Error(error.message || 'Profile update failed')
+    }
+  }
+
+  // Manual email verification for testing
+  const verifyEmailManually = async (userId: string): Promise<void> => {
+    try {
+      console.log('🔧 Manually verifying email for user:', userId)
+      // This is a development helper - in production, users verify via email
+      const userDocRef = doc(db, 'users', userId)
+      await updateDoc(userDocRef, {
+        emailVerified: true,
+        updatedAt: new Date()
+      })
+      console.log('✅ Email manually verified for testing')
+    } catch (error: any) {
+      console.error('Manual verification error:', error)
+      throw new Error('Manual verification failed')
     }
   }
 
