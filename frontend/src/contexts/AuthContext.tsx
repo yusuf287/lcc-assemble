@@ -6,6 +6,7 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
+  sendEmailVerification,
   updateProfile
 } from 'firebase/auth'
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
@@ -16,7 +17,7 @@ interface AuthContextType {
   user: AppUser | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (email: string, password: string, displayName: string) => Promise<void>
+  register: (email: string, password: string, displayName: string, profileData?: any) => Promise<void>
   logout: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
   updateProfile: (updates: Partial<AppUser>) => Promise<void>
@@ -113,18 +114,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string): Promise<void> => {
     try {
       setError(null)
-      await signInWithEmailAndPassword(auth, email, password)
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+
+      // Check if email is verified
+      if (!userCredential.user.emailVerified) {
+        await signOut(auth)
+        throw new Error('Please verify your email before logging in. Check your inbox for the verification link.')
+      }
+
+      // Check user status
+      const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid))
+      if (userDoc.exists()) {
+        const userData = userDoc.data() as AppUser
+        if (userData.status === 'suspended') {
+          await signOut(auth)
+          throw new Error('Your account has been suspended. Please contact an administrator.')
+        }
+      }
     } catch (error: any) {
       console.error('Login error:', error)
-      const errorMessage = error.message || 'Login failed'
+      const errorMessage = error.code === 'auth/user-not-found'
+        ? 'No account found with this email address.'
+        : error.code === 'auth/wrong-password'
+        ? 'Incorrect password. Please try again.'
+        : error.code === 'auth/invalid-email'
+        ? 'Please enter a valid email address.'
+        : error.code === 'auth/user-disabled'
+        ? 'This account has been disabled.'
+        : error.code === 'auth/too-many-requests'
+        ? 'Too many failed login attempts. Please try again later.'
+        : error.message || 'Login failed'
+
       setError(errorMessage)
       throw new Error(errorMessage)
     }
   }
 
   // Register function
-  const register = async (email: string, password: string, displayName: string): Promise<void> => {
+  const register = async (email: string, password: string, displayName: string, profileData?: any): Promise<void> => {
     try {
+      setError(null)
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
 
       // Update Firebase Auth profile
@@ -132,15 +161,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         displayName: displayName
       })
 
-      // Create user profile in Firestore
+      // Create comprehensive user profile in Firestore
       const userDocRef = doc(db, 'users', userCredential.user.uid)
-      await setDoc(userDocRef, {
+      const userData = {
         uid: userCredential.user.uid,
         email,
         displayName,
-        interests: [],
-        dietaryPreferences: [],
-        privacy: {
+        phoneNumber: profileData?.phoneNumber || '',
+        whatsappNumber: profileData?.whatsappNumber || '',
+        bio: profileData?.bio || '',
+        interests: profileData?.interests || [],
+        dietaryPreferences: profileData?.dietaryPreferences || [],
+        address: profileData?.address || {
+          street: '',
+          city: '',
+          postalCode: ''
+        },
+        privacy: profileData?.privacy || {
           phoneVisible: false,
           whatsappVisible: false,
           addressVisible: false
@@ -154,10 +191,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
         createdAt: new Date(),
         updatedAt: new Date()
-      })
+      }
+
+      await setDoc(userDocRef, userData)
+
+      // Send email verification
+      await sendEmailVerification(userCredential.user)
+
     } catch (error: any) {
       console.error('Registration error:', error)
-      throw new Error(error.message || 'Registration failed')
+      const errorMessage = error.code === 'auth/email-already-in-use'
+        ? 'This email is already registered. Please try logging in instead.'
+        : error.code === 'auth/weak-password'
+        ? 'Password is too weak. Please choose a stronger password.'
+        : error.code === 'auth/invalid-email'
+        ? 'Please enter a valid email address.'
+        : error.message || 'Registration failed. Please try again.'
+
+      setError(errorMessage)
+      throw new Error(errorMessage)
     }
   }
 

@@ -30,20 +30,50 @@ import { User, UserProfile, UserStatus } from '../types'
 
 export class AuthService {
   // Authentication Methods
-  static async register(email: string, password: string, displayName: string): Promise<UserCredential> {
+  static async register(
+    email: string,
+    password: string,
+    displayName: string,
+    profileData?: {
+      phoneNumber?: string
+      whatsappNumber?: string
+      bio?: string
+      interests?: string[]
+      dietaryPreferences?: string[]
+      address?: {
+        street: string
+        city: string
+        postalCode: string
+      }
+      privacy?: {
+        phoneVisible: boolean
+        whatsappVisible: boolean
+        addressVisible: boolean
+      }
+    }
+  ): Promise<UserCredential> {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
 
       // Update Firebase Auth profile
       await updateProfile(userCredential.user, { displayName })
 
-      // Create user document in Firestore
+      // Create comprehensive user document in Firestore
       const userData = {
+        uid: userCredential.user.uid,
         email,
         displayName,
-        interests: [],
-        dietaryPreferences: [],
-        privacy: {
+        phoneNumber: profileData?.phoneNumber || '',
+        whatsappNumber: profileData?.whatsappNumber || '',
+        bio: profileData?.bio || '',
+        interests: profileData?.interests || [],
+        dietaryPreferences: profileData?.dietaryPreferences || [],
+        address: profileData?.address || {
+          street: '',
+          city: '',
+          postalCode: ''
+        },
+        privacy: profileData?.privacy || {
           phoneVisible: false,
           whatsappVisible: false,
           addressVisible: false

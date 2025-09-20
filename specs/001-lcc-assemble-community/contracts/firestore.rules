@@ -14,12 +14,14 @@ service cloud.firestore {
       // New user registration (status will be 'pending')
       allow create: if request.auth != null && request.auth.uid == userId;
 
-      // All authenticated users can read basic profile info for member directory
+      // Allow reading user profiles for member directory (with privacy considerations)
       allow read: if request.auth != null;
 
-      // Admins can read and update all user profiles
-      allow read, update: if request.auth != null &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // Admins can read and update all user profiles (with safe admin check)
+      allow read, update, delete: if request.auth != null &&
+        (request.auth.uid == userId || // User can access their own profile
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
     }
 
     // Events collection

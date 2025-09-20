@@ -6,13 +6,14 @@ import toast from 'react-hot-toast'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
-import { AuthService } from '../services/authService'
+import { useAuth } from '../contexts/AuthContext'
 import { userRegistrationSchema, UserRegistrationForm } from '../validation/schemas'
 
 const RegistrationPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
   const navigate = useNavigate()
+  const { register, error, clearError } = useAuth()
 
   const {
     control,
@@ -48,6 +49,13 @@ const RegistrationPage: React.FC = () => {
   const watchedInterests = watch('interests')
   const watchedDietaryPreferences = watch('dietaryPreferences')
 
+  // Clear error when user interacts with form
+  const clearFormError = () => {
+    if (error && clearError) {
+      clearError()
+    }
+  }
+
   const interestOptions = [
     'Cooking', 'Baking', 'Gardening', 'Photography', 'Music', 'Sports',
     'Reading', 'Travel', 'Art', 'Technology', 'Volunteering', 'Fitness'
@@ -61,21 +69,46 @@ const RegistrationPage: React.FC = () => {
   const onSubmit = async (data: UserRegistrationForm) => {
     try {
       setIsLoading(true)
-      await AuthService.register(data.email, 'tempPassword123!', data.displayName)
 
-      toast.success('Registration successful! Please check your email to verify your account.')
+      // Clear any previous errors
+      if (clearError) clearError()
+
+      // Final validation check
+      const isFormValid = await trigger()
+      if (!isFormValid) {
+        toast.error('Please fill in all required fields correctly.')
+        setIsLoading(false)
+        return
+      }
+
+      // Generate a secure temporary password
+      const tempPassword = Math.random().toString(36).slice(-12) + 'A1!'
+
+      await register(
+        data.email,
+        tempPassword,
+        data.displayName,
+        {
+          phoneNumber: data.phoneNumber,
+          whatsappNumber: data.whatsappNumber,
+          bio: data.bio,
+          interests: data.interests,
+          dietaryPreferences: data.dietaryPreferences,
+          address: data.address,
+          privacy: data.privacy
+        }
+      )
+
+      toast.success(`Registration successful! Your temporary password is: ${tempPassword}`)
+      toast.success('Please check your email to verify your account.')
       navigate('/login')
     } catch (error: any) {
       console.error('Registration error:', error)
 
-      if (error.code === 'auth/email-already-in-use') {
-        toast.error('This email is already registered. Please try logging in instead.')
-      } else if (error.code === 'auth/weak-password') {
-        toast.error('Password is too weak. Please choose a stronger password.')
-      } else if (error.code === 'auth/invalid-email') {
-        toast.error('Please enter a valid email address.')
-      } else {
-        toast.error('Registration failed. Please try again.')
+      // Error is already handled by AuthContext and displayed via toast
+      // The AuthContext sets the error state which will be displayed
+      if (error.message) {
+        toast.error(error.message)
       }
     } finally {
       setIsLoading(false)
@@ -92,17 +125,21 @@ const RegistrationPage: React.FC = () => {
         break
       case 2:
         fieldsToValidate = ['phoneNumber', 'whatsappNumber', 'bio']
-        // Only validate address if any address field is filled
+        // Validate address fields if any are filled
         const addressValue = watch('address')
         if (addressValue?.street || addressValue?.city || addressValue?.postalCode) {
-          fieldsToValidate.push('address.street', 'address.city', 'address.postalCode')
+          fieldsToValidate.push('address.street' as keyof UserRegistrationForm)
+          fieldsToValidate.push('address.city' as keyof UserRegistrationForm)
+          fieldsToValidate.push('address.postalCode' as keyof UserRegistrationForm)
         }
         break
       case 3:
+        // Interests and dietary preferences are optional but should be validated if present
         fieldsToValidate = ['interests', 'dietaryPreferences']
         break
       case 4:
-        fieldsToValidate = ['privacy.phoneVisible', 'privacy.whatsappVisible', 'privacy.addressVisible']
+        // Privacy settings are required
+        fieldsToValidate = ['privacy.phoneVisible' as keyof UserRegistrationForm, 'privacy.whatsappVisible' as keyof UserRegistrationForm, 'privacy.addressVisible' as keyof UserRegistrationForm]
         break
       default:
         break
@@ -178,11 +215,27 @@ const RegistrationPage: React.FC = () => {
         </div>
 
         <Card className="p-8">
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Step 1: Account Information */}
             {currentStep === 1 && (
               <div className="space-y-6">
                 <h3 className="text-xl font-semibold text-gray-900">Create Your Account</h3>
+                <p className="text-sm text-gray-600">* Required fields</p>
 
                 <Controller
                   name="email"
@@ -190,8 +243,12 @@ const RegistrationPage: React.FC = () => {
                   render={({ field }) => (
                     <Input
                       {...field}
+                      onChange={(e) => {
+                        field.onChange(e)
+                        clearFormError()
+                      }}
                       type="email"
-                      label="Email Address"
+                      label="Email Address *"
                       placeholder="your.email@example.com"
                       error={errors.email?.message}
                       required
@@ -205,7 +262,11 @@ const RegistrationPage: React.FC = () => {
                   render={({ field }) => (
                     <Input
                       {...field}
-                      label="Display Name"
+                      onChange={(e) => {
+                        field.onChange(e)
+                        clearFormError()
+                      }}
+                      label="Display Name *"
                       placeholder="How you want to be known in the community"
                       error={errors.displayName?.message}
                       required
@@ -215,7 +276,7 @@ const RegistrationPage: React.FC = () => {
 
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    <strong>Note:</strong> You'll receive a temporary password via email after registration.
+                    <strong>Note:</strong> You'll receive a secure temporary password after registration.
                     You can change it later in your profile settings.
                   </p>
                 </div>
@@ -226,6 +287,7 @@ const RegistrationPage: React.FC = () => {
             {currentStep === 2 && (
               <div className="space-y-6">
                 <h3 className="text-xl font-semibold text-gray-900">Tell Us About Yourself</h3>
+                <p className="text-sm text-gray-600">All fields are optional but help us personalize your experience</p>
 
                 <Controller
                   name="phoneNumber"
@@ -330,6 +392,7 @@ const RegistrationPage: React.FC = () => {
             {currentStep === 3 && (
               <div className="space-y-6">
                 <h3 className="text-xl font-semibold text-gray-900">Your Interests & Preferences</h3>
+                <p className="text-sm text-gray-600">Optional selections to help us connect you with like-minded community members</p>
 
                 {/* Interests */}
                 <div>
@@ -390,7 +453,7 @@ const RegistrationPage: React.FC = () => {
               <div className="space-y-6">
                 <h3 className="text-xl font-semibold text-gray-900">Privacy Settings</h3>
                 <p className="text-sm text-gray-600">
-                  Control what information is visible to other community members.
+                  Control what information is visible to other community members. These settings are required.
                 </p>
 
                 <div className="space-y-4">
@@ -495,7 +558,7 @@ const RegistrationPage: React.FC = () => {
                 <Button
                   type="submit"
                   disabled={isLoading || !isValid}
-                  className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700"
+                  className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? 'Creating Account...' : 'Join the Community'}
                 </Button>
