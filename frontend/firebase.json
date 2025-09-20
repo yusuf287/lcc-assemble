@@ -34,7 +34,8 @@
     ]
   },
   "firestore": {
-    "rules": "../specs/001-lcc-assemble-community/contracts/firestore.rules"
+    "rules": "../specs/001-lcc-assemble-community/contracts/firestore.rules",
+    "indexes": "firestore.indexes.json"
   },
   "storage": {
     "rules": "../specs/001-lcc-assemble-community/contracts/storage.rules"
