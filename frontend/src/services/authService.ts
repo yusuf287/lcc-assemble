@@ -25,7 +25,7 @@ import {
   onSnapshot
 } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { auth, db, storage } from '../config/firebase'
+import { auth, db, storage } from './firebase'
 import { User, UserProfile, UserStatus } from '../types'
 
 export class AuthService {

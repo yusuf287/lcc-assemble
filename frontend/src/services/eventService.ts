@@ -220,7 +220,7 @@ export const updateEvent = async (
     if (updates.dateTime) {
       updateData.dateTime = dateToTimestamp(updates.dateTime)
     }
-    updateData.updatedAt = dateToTimestamp(updateData.updatedAt!)
+    updateData.updatedAt = dateToTimestamp(updateData.updatedAt)
 
     await updateDoc(doc(db, EVENTS_COLLECTION, eventId), updateData)
   } catch (error) {

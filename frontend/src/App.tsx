@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast'
 // Pages
 import LoginPage from './pages/LoginPage'
 import RegistrationPage from './pages/RegistrationPage'
+import TestPage from './pages/TestPage'
 import DashboardPage from './pages/DashboardPage'
 import EventsPage from './pages/EventsPage'
 import EventDetailsPage from './pages/EventDetailsPage'
@@ -197,6 +198,9 @@ function App() {
       <Router>
         <AppLayout>
           <Routes>
+            {/* Test Route - No Auth Required */}
+            <Route path="/test" element={<TestPage />} />
+
             {/* Public Routes */}
             <Route
               path="/login"

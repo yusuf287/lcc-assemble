@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app'
+import { initializeApp, getApps } from 'firebase/app'
 import { getAuth, connectAuthEmulator } from 'firebase/auth'
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
 import { getStorage, connectStorageEmulator } from 'firebase/storage'
@@ -30,8 +30,20 @@ if (missingEnvVars.length > 0) {
   throw new Error(`Missing Firebase configuration: ${missingEnvVars.join(', ')}`)
 }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig)
+// Initialize Firebase with proper duplicate app handling
+let app
+
+// Check if app already exists BEFORE trying to initialize
+const existingApps = getApps()
+if (existingApps.length > 0) {
+  // Use existing app
+  app = existingApps[0]
+  console.log('🔥 Using existing Firebase app instance')
+} else {
+  // No existing app, safe to initialize
+  app = initializeApp(firebaseConfig)
+  console.log('🔥 Created new Firebase app instance')
+}
 
 // Initialize Firebase services
 export const auth = getAuth(app)
