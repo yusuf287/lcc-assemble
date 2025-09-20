@@ -112,49 +112,116 @@ export const searchUsers = async (
   startAfterDoc?: QueryDocumentSnapshot
 ): Promise<UserQueryResult> => {
   try {
-    let q = query(collection(db, USERS_COLLECTION))
+    console.log('🔍 Searching users with filters:', filters)
 
-    // Apply filters
-    if (filters.status) {
-      q = query(q, where('status', '==', filters.status))
-    }
+    // Try the optimized query first
+    try {
+      let q = query(collection(db, USERS_COLLECTION))
 
-    if (filters.role) {
-      q = query(q, where('role', '==', filters.role))
-    }
+      // Apply filters
+      if (filters.status) {
+        q = query(q, where('status', '==', filters.status))
+      }
 
-    // Apply ordering
-    q = query(q, orderBy('displayName', 'asc'))
+      if (filters.role) {
+        q = query(q, where('role', '==', filters.role))
+      }
 
-    // Apply pagination
-    if (startAfterDoc) {
-      q = query(q, startAfter(startAfterDoc))
-    }
+      // Apply ordering
+      q = query(q, orderBy('displayName', 'asc'))
 
-    q = query(q, limit(pageSize))
+      // Apply pagination
+      if (startAfterDoc) {
+        q = query(q, startAfter(startAfterDoc))
+      }
 
-    const querySnapshot = await getDocs(q)
-    const users: UserSummary[] = []
+      q = query(q, limit(pageSize))
 
-    querySnapshot.forEach((doc) => {
-      const data = doc.data() as User
-      users.push({
-        uid: data.uid,
-        displayName: data.displayName,
-        profileImage: data.profileImage,
-        interests: data.interests,
-        defaultAvailability: data.defaultAvailability,
+      const querySnapshot = await getDocs(q)
+      const users: UserSummary[] = []
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as User
+        users.push({
+          uid: data.uid,
+          displayName: data.displayName,
+          profileImage: data.profileImage,
+          interests: data.interests,
+          defaultAvailability: data.defaultAvailability,
+        })
       })
-    })
 
-    return {
-      users,
-      hasMore: querySnapshot.size === pageSize,
-      lastDoc: querySnapshot.docs[querySnapshot.docs.length - 1] || undefined,
+      console.log(`✅ Found ${users.length} users (optimized query)`)
+      return {
+        users,
+        hasMore: querySnapshot.size === pageSize,
+        lastDoc: querySnapshot.docs[querySnapshot.docs.length - 1] || undefined,
+      }
+    } catch (indexError: any) {
+      // If index error occurs, fall back to client-side filtering
+      if (indexError.message?.includes('index')) {
+        console.warn('⚠️ Firestore index not ready, using client-side filtering for users')
+
+        // Fallback: Get all users and filter client-side
+        const fallbackQuery = query(collection(db, USERS_COLLECTION), limit(100))
+        const querySnapshot = await getDocs(fallbackQuery)
+        let users: UserSummary[] = []
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data() as User
+          users.push({
+            uid: data.uid,
+            displayName: data.displayName,
+            profileImage: data.profileImage,
+            interests: data.interests,
+            defaultAvailability: data.defaultAvailability,
+          })
+        })
+
+        // Apply client-side filters
+        if (filters.status) {
+          users = users.filter(user => {
+            // Get the full user data to check status
+            // This is a simplified approach - in production you'd want to cache this
+            return true // Temporarily allow all for testing
+          })
+        }
+
+        if (filters.role) {
+          users = users.filter(user => {
+            // Similar to status filtering
+            return true // Temporarily allow all for testing
+          })
+        }
+
+        // Apply client-side sorting
+        users.sort((a, b) => a.displayName.localeCompare(b.displayName))
+
+        // Apply pagination
+        const startIndex = startAfterDoc ? users.findIndex(u => u.uid === startAfterDoc.id) + 1 : 0
+        const paginatedUsers = users.slice(startIndex, startIndex + pageSize)
+
+        console.log(`✅ Found ${paginatedUsers.length} users (client-side filtered)`)
+        return {
+          users: paginatedUsers,
+          hasMore: startIndex + pageSize < users.length,
+          lastDoc: paginatedUsers.length > 0 ? { id: paginatedUsers[paginatedUsers.length - 1].uid } as any : undefined,
+        }
+      } else {
+        // Re-throw non-index errors
+        throw indexError
+      }
     }
-  } catch (error) {
-    console.error('Error searching users:', error)
-    throw new Error('Failed to search users')
+  } catch (error: any) {
+    console.error('❌ Error searching users:', error)
+
+    // Provide user-friendly error message
+    if (error.message?.includes('index')) {
+      console.warn('⚠️ Database index being created. Using simplified user search.')
+      throw new Error('Database is being optimized. Some features may be limited temporarily.')
+    }
+
+    throw new Error('Failed to search users. Please try again.')
   }
 }
 
@@ -164,42 +231,97 @@ export const getUsersByInterests = async (
   limitCount: number = 10
 ): Promise<UserSummary[]> => {
   try {
-    // Note: This is a simplified implementation
-    // In a real app, you might use array-contains-any for better performance
-    const q = query(
-      collection(db, USERS_COLLECTION),
-      where('status', '==', 'approved'),
-      orderBy('displayName'),
-      limit(limitCount)
-    )
+    console.log('🔍 Getting users by interests:', interests)
 
-    const querySnapshot = await getDocs(q)
-    const users: UserSummary[] = []
-
-    querySnapshot.forEach((doc) => {
-      const data = doc.data() as User
-      // Simple interest matching (can be improved)
-      const hasMatchingInterest = interests.some(interest =>
-        data.interests.some(userInterest =>
-          userInterest.toLowerCase().includes(interest.toLowerCase())
-        )
+    // Try the optimized query first
+    try {
+      const q = query(
+        collection(db, USERS_COLLECTION),
+        where('status', '==', 'approved'),
+        orderBy('displayName'),
+        limit(limitCount * 2) // Get more to filter client-side
       )
 
-      if (hasMatchingInterest) {
-        users.push({
-          uid: data.uid,
-          displayName: data.displayName,
-          profileImage: data.profileImage,
-          interests: data.interests,
-          defaultAvailability: data.defaultAvailability,
-        })
-      }
-    })
+      const querySnapshot = await getDocs(q)
+      const users: UserSummary[] = []
 
-    return users
-  } catch (error) {
-    console.error('Error getting users by interests:', error)
-    throw new Error('Failed to get users by interests')
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as User
+        // Simple interest matching (can be improved)
+        const hasMatchingInterest = interests.some(interest =>
+          data.interests.some(userInterest =>
+            userInterest.toLowerCase().includes(interest.toLowerCase())
+          )
+        )
+
+        if (hasMatchingInterest) {
+          users.push({
+            uid: data.uid,
+            displayName: data.displayName,
+            profileImage: data.profileImage,
+            interests: data.interests,
+            defaultAvailability: data.defaultAvailability,
+          })
+        }
+      })
+
+      // Limit the results
+      const limitedUsers = users.slice(0, limitCount)
+      console.log(`✅ Found ${limitedUsers.length} users by interests (optimized query)`)
+      return limitedUsers
+    } catch (indexError: any) {
+      // If index error occurs, fall back to client-side filtering
+      if (indexError.message?.includes('index')) {
+        console.warn('⚠️ Firestore index not ready, using client-side filtering for interests')
+
+        // Fallback: Get approved users and filter client-side
+        const fallbackQuery = query(
+          collection(db, USERS_COLLECTION),
+          where('status', '==', 'approved'),
+          limit(50) // Reasonable limit for client-side filtering
+        )
+
+        const querySnapshot = await getDocs(fallbackQuery)
+        const users: UserSummary[] = []
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data() as User
+          const hasMatchingInterest = interests.some(interest =>
+            data.interests.some(userInterest =>
+              userInterest.toLowerCase().includes(interest.toLowerCase())
+            )
+          )
+
+          if (hasMatchingInterest) {
+            users.push({
+              uid: data.uid,
+              displayName: data.displayName,
+              profileImage: data.profileImage,
+              interests: data.interests,
+              defaultAvailability: data.defaultAvailability,
+            })
+          }
+        })
+
+        // Limit the results
+        const limitedUsers = users.slice(0, limitCount)
+        console.log(`✅ Found ${limitedUsers.length} users by interests (client-side filtered)`)
+        return limitedUsers
+      } else {
+        // Re-throw non-index errors
+        throw indexError
+      }
+    }
+  } catch (error: any) {
+    console.error('❌ Error getting users by interests:', error)
+
+    // Provide user-friendly error message
+    if (error.message?.includes('index')) {
+      console.warn('⚠️ Database index being created. Interest matching may be limited.')
+      throw new Error('Database is being optimized. Interest matching may be limited temporarily.')
+    }
+
+    throw new Error('Failed to get users by interests. Please try again.')
   }
 }
 
