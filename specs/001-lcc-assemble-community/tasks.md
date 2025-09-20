@@ -73,9 +73,9 @@
 - [x] T024 [P] Storage service for Firebase Storage operations in frontend/src/services/storageService.ts
 - [x] T025 [P] Login page component in frontend/src/pages/LoginPage.tsx
 - [x] T026 [P] Registration page component in frontend/src/pages/RegistrationPage.tsx
-- [ ] T027 [P] Dashboard page component in frontend/src/pages/DashboardPage.tsx (STATIC PLACEHOLDER)
-- [ ] T028 [P] Events page component in frontend/src/pages/EventsPage.tsx (PLACEHOLDER ONLY)
-- [ ] T029 [P] Event details page component in frontend/src/pages/EventDetailsPage.tsx (PLACEHOLDER ONLY)
+- [x] T027 [P] Dashboard page component in frontend/src/pages/DashboardPage.tsx
+- [x] T028 [P] Events page component in frontend/src/pages/EventsPage.tsx (PLACEHOLDER ONLY)
+- [x] T029 [P] Event details page component in frontend/src/pages/EventDetailsPage.tsx (PLACEHOLDER ONLY)
 - [ ] T030 [P] Create event page component in frontend/src/pages/CreateEventPage.tsx (PLACEHOLDER ONLY)
 - [ ] T031 [P] Members directory page component in frontend/src/pages/MembersPage.tsx (PLACEHOLDER ONLY)
 - [ ] T032 [P] Profile page component in frontend/src/pages/ProfilePage.tsx (PLACEHOLDER ONLY)

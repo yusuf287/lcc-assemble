@@ -83,7 +83,32 @@ const RegistrationPage: React.FC = () => {
   }
 
   const handleNextStep = async () => {
-    const isStepValid = await trigger()
+    let fieldsToValidate: (keyof UserRegistrationForm)[] = []
+
+    // Define which fields to validate for each step
+    switch (currentStep) {
+      case 1:
+        fieldsToValidate = ['email', 'displayName']
+        break
+      case 2:
+        fieldsToValidate = ['phoneNumber', 'whatsappNumber', 'bio']
+        // Only validate address if any address field is filled
+        const addressValue = watch('address')
+        if (addressValue?.street || addressValue?.city || addressValue?.postalCode) {
+          fieldsToValidate.push('address.street', 'address.city', 'address.postalCode')
+        }
+        break
+      case 3:
+        fieldsToValidate = ['interests', 'dietaryPreferences']
+        break
+      case 4:
+        fieldsToValidate = ['privacy.phoneVisible', 'privacy.whatsappVisible', 'privacy.addressVisible']
+        break
+      default:
+        break
+    }
+
+    const isStepValid = await trigger(fieldsToValidate)
     if (isStepValid) {
       setCurrentStep(currentStep + 1)
     }
