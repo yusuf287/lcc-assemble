@@ -39,7 +39,7 @@ const EventDetailsPage: React.FC = () => {
     }
   }, [event, user])
 
-  const loadEventDetails = async () => {
+  const loadEventDetails = async (): Promise<(() => void) | undefined> => {
     if (!eventId) return
 
     try {
@@ -70,6 +70,7 @@ const EventDetailsPage: React.FC = () => {
       console.error('Error loading event details:', error)
       toast.error('Failed to load event details')
       navigate('/events')
+      return
     } finally {
       setIsLoading(false)
     }
