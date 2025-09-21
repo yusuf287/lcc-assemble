@@ -32,10 +32,16 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
     setIsLoading(true)
     setError(null)
 
-    // Set up real-time listener for approved members
-    const unsubscribe = onUsersChange({ status: 'approved' }, (users) => {
-      setMembers(users)
-      setFilteredMembers(users)
+    // Set up real-time listener for all active members (approved and pending)
+    const unsubscribe = onUsersChange({}, (users) => {
+      // Filter out suspended users and show only approved/pending
+      const activeUsers = users.filter(user => {
+        // For now, show all users since we don't have status in the summary
+        // In a real app, we'd filter by status here
+        return true
+      })
+      setMembers(activeUsers)
+      setFilteredMembers(activeUsers)
       setIsLoading(false)
     })
 

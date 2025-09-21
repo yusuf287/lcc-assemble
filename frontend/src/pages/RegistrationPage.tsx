@@ -12,6 +12,7 @@ import { userRegistrationSchema, UserRegistrationForm } from '../validation/sche
 const RegistrationPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
+  const [privacyStepInteracted, setPrivacyStepInteracted] = useState(false)
   const navigate = useNavigate()
   const { register, error, clearError } = useAuth()
 
@@ -24,7 +25,7 @@ const RegistrationPage: React.FC = () => {
     trigger
   } = useForm<UserRegistrationForm>({
     resolver: zodResolver(userRegistrationSchema),
-    mode: 'onChange',
+    mode: 'onBlur', // Change to onBlur to prevent auto-advancement
     defaultValues: {
       email: '',
       displayName: '',
@@ -182,8 +183,8 @@ const RegistrationPage: React.FC = () => {
         }
         break
       case 3:
-        // Interests and dietary preferences are optional but should be validated if present
-        fieldsToValidate = ['interests', 'dietaryPreferences']
+        // Interests and dietary preferences are completely optional - no validation required
+        fieldsToValidate = []
         break
       case 4:
         // Privacy settings are required
@@ -441,6 +442,11 @@ const RegistrationPage: React.FC = () => {
               <div className="space-y-6">
                 <h3 className="text-xl font-semibold text-gray-900">Your Interests & Preferences</h3>
                 <p className="text-sm text-gray-600">Optional selections to help us connect you with like-minded community members</p>
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    💡 <strong>Tip:</strong> Select any interests or dietary preferences that match your lifestyle, or click "Next" to skip this step.
+                  </p>
+                </div>
 
                 {/* Interests */}
                 <div>
@@ -503,6 +509,11 @@ const RegistrationPage: React.FC = () => {
                 <p className="text-sm text-gray-600">
                   Control what information is visible to other community members. These settings are required.
                 </p>
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    🔒 <strong>Final Step:</strong> Set your privacy preferences and click "Join the Community" to complete your registration.
+                  </p>
+                </div>
 
                 <div className="space-y-4">
                   <Controller
@@ -513,7 +524,10 @@ const RegistrationPage: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={field.value}
-                          onChange={field.onChange}
+                          onChange={(e) => {
+                            field.onChange(e)
+                            setPrivacyStepInteracted(true)
+                          }}
                           onBlur={field.onBlur}
                           name={field.name}
                           ref={field.ref}
@@ -534,7 +548,10 @@ const RegistrationPage: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={field.value}
-                          onChange={field.onChange}
+                          onChange={(e) => {
+                            field.onChange(e)
+                            setPrivacyStepInteracted(true)
+                          }}
                           onBlur={field.onBlur}
                           name={field.name}
                           ref={field.ref}
@@ -555,7 +572,10 @@ const RegistrationPage: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={field.value}
-                          onChange={field.onChange}
+                          onChange={(e) => {
+                            field.onChange(e)
+                            setPrivacyStepInteracted(true)
+                          }}
                           onBlur={field.onBlur}
                           name={field.name}
                           ref={field.ref}
@@ -599,14 +619,22 @@ const RegistrationPage: React.FC = () => {
                   type="button"
                   onClick={handleNextStep}
                   disabled={isLoading}
+                  className="px-6 py-2"
                 >
                   Next
                 </Button>
               ) : (
                 <Button
                   type="submit"
-                  disabled={isLoading || !isValid}
+                  disabled={isLoading || !isValid || !privacyStepInteracted}
                   className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={(e) => {
+                    // Prevent any accidental auto-submission
+                    if (!isValid || isLoading || !privacyStepInteracted) {
+                      e.preventDefault()
+                      return
+                    }
+                  }}
                 >
                   {isLoading ? 'Creating Account...' : 'Join the Community'}
                 </Button>

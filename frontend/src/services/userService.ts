@@ -434,34 +434,119 @@ export const onUsersChange = (
   filters: UserFilters = {},
   callback: (users: UserSummary[]) => void
 ): (() => void) => {
-  let q = query(collection(db, USERS_COLLECTION))
+  // Check if we need complex filtering that requires indexes
+  const needsComplexQuery = filters.status || filters.role
 
-  // Apply basic filters that work with real-time queries
-  if (filters.status) {
-    q = query(q, where('status', '==', filters.status))
-  }
+  if (needsComplexQuery) {
+    // For complex queries, try the indexed version first, then fallback
+    try {
+      let q = query(collection(db, USERS_COLLECTION))
 
-  if (filters.role) {
-    q = query(q, where('role', '==', filters.role))
-  }
+      // Apply filters
+      if (filters.status) {
+        q = query(q, where('status', '==', filters.status))
+      }
 
-  q = query(q, orderBy('displayName', 'asc'), limit(100))
+      if (filters.role) {
+        q = query(q, where('role', '==', filters.role))
+      }
 
-  return onSnapshot(q, (querySnapshot) => {
-    const users: UserSummary[] = []
-    querySnapshot.forEach((doc) => {
-      const data = doc.data() as User
-      users.push({
-        uid: data.uid,
-        displayName: data.displayName,
-        profileImage: data.profileImage,
-        interests: data.interests,
-        defaultAvailability: data.defaultAvailability,
+      q = query(q, orderBy('displayName', 'asc'), limit(100))
+
+      return onSnapshot(q, (querySnapshot) => {
+        const users: UserSummary[] = []
+        querySnapshot.forEach((doc) => {
+          const data = doc.data() as User
+          users.push({
+            uid: data.uid,
+            displayName: data.displayName,
+            profileImage: data.profileImage,
+            interests: data.interests,
+            defaultAvailability: data.defaultAvailability,
+          })
+        })
+        callback(users)
+      }, (error) => {
+        console.error('Users list listener error:', error)
+        if (error.message?.includes('index')) {
+          console.warn('⚠️ Falling back to simple user listener (no real-time updates)')
+          // Fallback to a simple query without ordering
+          const fallbackQuery = query(collection(db, USERS_COLLECTION), limit(100))
+          return onSnapshot(fallbackQuery, (querySnapshot) => {
+            const users: UserSummary[] = []
+            querySnapshot.forEach((doc) => {
+              const data = doc.data() as User
+              // Only include users that match our filters
+              if ((!filters.status || data.status === filters.status) &&
+                  (!filters.role || data.role === filters.role)) {
+                users.push({
+                  uid: data.uid,
+                  displayName: data.displayName,
+                  profileImage: data.profileImage,
+                  interests: data.interests,
+                  defaultAvailability: data.defaultAvailability,
+                })
+              }
+            })
+            // Sort client-side
+            users.sort((a, b) => a.displayName.localeCompare(b.displayName))
+            callback(users)
+          }, (fallbackError) => {
+            console.error('Fallback users listener error:', fallbackError)
+            callback([])
+          })
+        } else {
+          callback([])
+        }
       })
+    } catch (setupError) {
+      console.error('Error setting up complex user listener:', setupError)
+      // Fallback immediately
+      const fallbackQuery = query(collection(db, USERS_COLLECTION), limit(100))
+      return onSnapshot(fallbackQuery, (querySnapshot) => {
+        const users: UserSummary[] = []
+        querySnapshot.forEach((doc) => {
+          const data = doc.data() as User
+          if ((!filters.status || data.status === filters.status) &&
+              (!filters.role || data.role === filters.role)) {
+            users.push({
+              uid: data.uid,
+              displayName: data.displayName,
+              profileImage: data.profileImage,
+              interests: data.interests,
+              defaultAvailability: data.defaultAvailability,
+            })
+          }
+        })
+        users.sort((a, b) => a.displayName.localeCompare(b.displayName))
+        callback(users)
+      }, (error) => {
+        console.error('Fallback users listener error:', error)
+        callback([])
+      })
+    }
+  } else {
+    // Simple query without complex filtering
+    const q = query(collection(db, USERS_COLLECTION), limit(100))
+
+    return onSnapshot(q, (querySnapshot) => {
+      const users: UserSummary[] = []
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as User
+        users.push({
+          uid: data.uid,
+          displayName: data.displayName,
+          profileImage: data.profileImage,
+          interests: data.interests,
+          defaultAvailability: data.defaultAvailability,
+        })
+      })
+      // Sort client-side
+      users.sort((a, b) => a.displayName.localeCompare(b.displayName))
+      callback(users)
+    }, (error) => {
+      console.error('Simple users listener error:', error)
+      callback([])
     })
-    callback(users)
-  }, (error) => {
-    console.error('Users list listener error:', error)
-    callback([])
-  })
+  }
 }

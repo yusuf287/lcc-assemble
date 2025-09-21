@@ -79,7 +79,7 @@ export class AuthService {
           addressVisible: false
         },
         role: 'member' as const,
-        status: 'pending' as const,
+        status: 'approved' as const,
         defaultAvailability: {
           weekdays: false,
           evenings: false,
