@@ -18,6 +18,6 @@ jobs:
       - name: Deploy to Firebase Hosting
         run: |
           cd frontend
-          npx firebase-tools hosting:channel:deploy --project lcc-assemble-49d97 --channel ${{ github.event.number }} --expires 7d
+          npx firebase-tools hosting:channel:deploy --project lcc-assemble-49d97 --channel pr-${{ github.event.number }} --expires 7d
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
