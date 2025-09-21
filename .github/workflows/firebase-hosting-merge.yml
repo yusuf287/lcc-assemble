@@ -13,8 +13,9 @@ jobs:
       - uses: actions/checkout@v4
       - run: cd frontend && npm ci
       - run: cd frontend && npm run build
-      - uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LCC_ASSEMBLE_49D97 }}
-          projectId: lcc-assemble-49d97
+      - name: Deploy to Firebase Hosting
+        run: |
+          cd frontend
+          npx firebase-tools deploy --project lcc-assemble-49d97 --only hosting
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
