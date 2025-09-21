@@ -472,7 +472,7 @@ export const onUsersChange = (
           console.warn('⚠️ Falling back to simple user listener (no real-time updates)')
           // Fallback to a simple query without ordering
           const fallbackQuery = query(collection(db, USERS_COLLECTION), limit(100))
-          return onSnapshot(fallbackQuery, (querySnapshot) => {
+          const unsubscribe = onSnapshot(fallbackQuery, (querySnapshot) => {
             const users: UserSummary[] = []
             querySnapshot.forEach((doc) => {
               const data = doc.data() as User
@@ -495,8 +495,10 @@ export const onUsersChange = (
             console.error('Fallback users listener error:', fallbackError)
             callback([])
           })
+          return unsubscribe
         } else {
           callback([])
+          return () => {} // Return empty cleanup function
         }
       })
     } catch (setupError) {
