@@ -17,5 +17,4 @@ jobs:
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LCC_ASSEMBLE_49D97 }}
-          channelId: live
           projectId: lcc-assemble-49d97
