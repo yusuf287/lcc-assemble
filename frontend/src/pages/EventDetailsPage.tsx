@@ -4,9 +4,11 @@ import { useAuth } from '../contexts/AuthContext'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
-import { getEvent, rsvpToEvent, claimBringListItem, onEventChange } from '../services/eventService'
+import { getEvent, rsvpToEvent, onEventChange } from '../services/eventService'
 import { getUserProfile } from '../services/userService'
-import { Event, UserProfile, RSVPStatus } from '../types'
+import { RSVPComponent } from '../components/events/RSVPComponent'
+import { BringListComponent } from '../components/events/BringListComponent'
+import { Event, UserProfile } from '../types'
 import toast from 'react-hot-toast'
 
 const EventDetailsPage: React.FC = () => {
@@ -17,10 +19,6 @@ const EventDetailsPage: React.FC = () => {
   const [event, setEvent] = useState<Event | null>(null)
   const [organizerProfile, setOrganizerProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isRSVPing, setIsRSVPing] = useState(false)
-  const [userRSVPStatus, setUserRSVPStatus] = useState<RSVPStatus | null>(null)
-  const [userGuestCount, setUserGuestCount] = useState(0)
-  const [bringListItems, setBringListItems] = useState<any[]>([])
 
   useEffect(() => {
     if (eventId) {
@@ -28,25 +26,18 @@ const EventDetailsPage: React.FC = () => {
     }
   }, [eventId])
 
-  useEffect(() => {
-    if (event && user) {
-      const userAttendee = event.attendees[user.uid]
-      if (userAttendee) {
-        setUserRSVPStatus(userAttendee.status)
-        setUserGuestCount(userAttendee.guestCount)
-      }
-      setBringListItems(event.bringList.items)
-    }
-  }, [event, user])
 
   const loadEventDetails = async (): Promise<(() => void) | undefined> => {
     if (!eventId) return
 
     try {
       setIsLoading(true)
+      console.log('🔍 Loading event details for ID:', eventId)
       const eventData = await getEvent(eventId)
+      console.log('✅ Event data loaded:', eventData)
 
       if (!eventData) {
+        console.warn('❌ Event not found for ID:', eventId)
         toast.error('Event not found')
         navigate('/events')
         return
@@ -54,9 +45,35 @@ const EventDetailsPage: React.FC = () => {
 
       setEvent(eventData)
 
-      // Load organizer profile
-      const organizer = await getUserProfile(eventData.organizer)
-      setOrganizerProfile(organizer)
+      // Load organizer profile (handle gracefully if not found)
+      try {
+        const organizer = await getUserProfile(eventData.organizer)
+        setOrganizerProfile(organizer)
+      } catch (profileError) {
+        console.warn('Could not load organizer profile:', profileError)
+        // Set a fallback organizer profile
+        setOrganizerProfile({
+          uid: eventData.organizer,
+          displayName: 'Unknown Organizer',
+          email: '',
+          interests: [],
+          dietaryPreferences: [],
+          privacy: {
+            phoneVisible: false,
+            whatsappVisible: false,
+            addressVisible: false
+          },
+          role: 'member',
+          status: 'approved',
+          defaultAvailability: {
+            weekdays: false,
+            evenings: false,
+            weekends: false
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+      }
 
       // Set up real-time listener
       const unsubscribe = onEventChange(eventId, (updatedEvent) => {
@@ -67,7 +84,13 @@ const EventDetailsPage: React.FC = () => {
 
       return unsubscribe
     } catch (error) {
-      console.error('Error loading event details:', error)
+      console.error('❌ Error loading event details:', error)
+      const errorDetails = error as any
+      console.error('❌ Error details:', {
+        message: errorDetails?.message,
+        code: errorDetails?.code,
+        stack: errorDetails?.stack
+      })
       toast.error('Failed to load event details')
       navigate('/events')
       return
@@ -76,38 +99,7 @@ const EventDetailsPage: React.FC = () => {
     }
   }
 
-  const handleRSVP = async (status: RSVPStatus, guestCount: number = 0) => {
-    if (!event || !user) return
 
-    try {
-      setIsRSVPing(true)
-      const result = await rsvpToEvent(event.id, user.uid, { status, guestCount })
-
-      if (result.success) {
-        toast.success(result.message)
-        setUserRSVPStatus(status)
-        setUserGuestCount(guestCount)
-      } else {
-        toast.error(result.message)
-      }
-    } catch (error) {
-      console.error('Error RSVPing to event:', error)
-      toast.error('Failed to RSVP to event')
-    } finally {
-      setIsRSVPing(false)
-    }
-  }
-
-  const handleClaimItem = async (itemId: string) => {
-    if (!event || !user) return
-
-    try {
-      await claimBringListItem(event.id, itemId, user.uid)
-      toast.success('Item claimed successfully!')
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to claim item')
-    }
-  }
 
   const formatDateTime = (date: Date) => {
     return date.toLocaleDateString('en-US', {
@@ -120,20 +112,6 @@ const EventDetailsPage: React.FC = () => {
     })
   }
 
-  const getRSVPButtonText = () => {
-    if (!userRSVPStatus) return 'RSVP'
-    switch (userRSVPStatus) {
-      case 'going': return 'Going'
-      case 'maybe': return 'Maybe'
-      case 'not_going': return 'Not Going'
-      default: return 'RSVP'
-    }
-  }
-
-  const getRSVPButtonVariant = () => {
-    if (!userRSVPStatus) return 'primary'
-    return userRSVPStatus === 'going' ? 'primary' : 'outline'
-  }
 
   if (isLoading) {
     return (
@@ -214,44 +192,28 @@ const EventDetailsPage: React.FC = () => {
         )}
       </div>
 
-      {/* Event Actions */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        {!isPastEvent && user && (
-          <div className="flex space-x-3">
-            <Button
-              onClick={() => handleRSVP('going', userGuestCount)}
-              disabled={isRSVPing}
-              className={userRSVPStatus === 'going' ? 'bg-green-500 hover:bg-green-600' : ''}
-            >
-              {isRSVPing ? 'Updating...' : 'Going'}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => handleRSVP('maybe', userGuestCount)}
-              disabled={isRSVPing}
-            >
-              Maybe
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => handleRSVP('not_going', 0)}
-              disabled={isRSVPing}
-            >
-              Can't Go
-            </Button>
-          </div>
-        )}
+      {/* RSVP Component */}
+      {!isPastEvent && (
+        <RSVPComponent
+          event={event}
+          onRSVPUpdate={() => {
+            // The component handles real-time updates, but we can trigger a refresh if needed
+            loadEventDetails()
+          }}
+        />
+      )}
 
-        {isOrganizer && (
+      {/* Organizer Actions */}
+      {isOrganizer && (
+        <div className="flex justify-end">
           <Button
             variant="outline"
             onClick={() => navigate(`/events/${event.id}/edit`)}
-            className="ml-auto"
           >
             Edit Event
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Event Details Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -299,34 +261,14 @@ const EventDetailsPage: React.FC = () => {
             </div>
           </Card>
 
-          {/* Bring List */}
-          {event.bringList.enabled && bringListItems.length > 0 && (
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">What to Bring</h2>
-              <div className="space-y-3">
-                {bringListItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
-                      <p className="font-medium">{item.item}</p>
-                      <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
-                      {item.assignedTo && (
-                        <p className="text-sm text-orange-600">Claimed by someone</p>
-                      )}
-                    </div>
-                    {!item.assignedTo && user && !isPastEvent && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleClaimItem(item.id)}
-                        className="bg-orange-500 hover:bg-orange-600"
-                      >
-                        Claim
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
+          {/* Bring List Component */}
+          <BringListComponent
+            event={event}
+            onItemClaimed={() => {
+              // Trigger a refresh to update the UI
+              loadEventDetails()
+            }}
+          />
 
           {/* Photo Gallery */}
           {event.images && event.images.length > 0 && (

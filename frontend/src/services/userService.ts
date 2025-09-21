@@ -10,6 +10,7 @@ import {
   orderBy,
   limit,
   startAfter,
+  onSnapshot,
   QueryDocumentSnapshot,
 } from 'firebase/firestore'
 import { db } from './firebase'
@@ -402,4 +403,65 @@ export const getUserCountByStatus = async (): Promise<Record<string, number>> =>
     console.error('Error getting user count by status:', error)
     throw new Error('Failed to get user statistics')
   }
+}
+
+// Real-time user profile listener
+export const onUserProfileChange = (
+  userId: string,
+  callback: (profile: UserProfile | null) => void
+): (() => void) => {
+  const userRef = doc(db, USERS_COLLECTION, userId)
+  return onSnapshot(userRef, (doc) => {
+    if (doc.exists()) {
+      const data = doc.data() as User
+      const profile: UserProfile = {
+        ...data,
+        createdAt: data.createdAt.toISOString(),
+        updatedAt: data.updatedAt.toISOString(),
+      }
+      callback(profile)
+    } else {
+      callback(null)
+    }
+  }, (error) => {
+    console.error('User profile listener error:', error)
+    callback(null)
+  })
+}
+
+// Real-time user list listener (for member directory)
+export const onUsersChange = (
+  filters: UserFilters = {},
+  callback: (users: UserSummary[]) => void
+): (() => void) => {
+  let q = query(collection(db, USERS_COLLECTION))
+
+  // Apply basic filters that work with real-time queries
+  if (filters.status) {
+    q = query(q, where('status', '==', filters.status))
+  }
+
+  if (filters.role) {
+    q = query(q, where('role', '==', filters.role))
+  }
+
+  q = query(q, orderBy('displayName', 'asc'), limit(100))
+
+  return onSnapshot(q, (querySnapshot) => {
+    const users: UserSummary[] = []
+    querySnapshot.forEach((doc) => {
+      const data = doc.data() as User
+      users.push({
+        uid: data.uid,
+        displayName: data.displayName,
+        profileImage: data.profileImage,
+        interests: data.interests,
+        defaultAvailability: data.defaultAvailability,
+      })
+    })
+    callback(users)
+  }, (error) => {
+    console.error('Users list listener error:', error)
+    callback([])
+  })
 }

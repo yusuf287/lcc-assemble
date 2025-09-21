@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
@@ -10,13 +11,23 @@ import toast from 'react-hot-toast'
 
 const EventsPage: React.FC = () => {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [events, setEvents] = useState<EventSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState<string>('all')
-  const [selectedStatus, setSelectedStatus] = useState<string>('published')
+  const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [hasMore, setHasMore] = useState(false)
+
+  // Set default filter based on user login status
+  useEffect(() => {
+    if (user) {
+      setSelectedStatus('all') // Show all events for logged-in users so they can see their drafts
+    } else {
+      setSelectedStatus('published') // Show only published events for anonymous users
+    }
+  }, [user])
 
   const eventTypes = [
     { value: 'all', label: 'All Types' },
@@ -29,14 +40,21 @@ const EventsPage: React.FC = () => {
 
   useEffect(() => {
     loadEvents()
-  }, [searchQuery, selectedType, selectedStatus])
+  }, [searchQuery, selectedType, selectedStatus, user])
 
   const loadEvents = async () => {
     try {
       setIsLoading(true)
+      console.log('🔍 Loading events with filters:', { selectedStatus, selectedType, searchQuery })
 
-      const filters: EventFilters = {
-        status: selectedStatus === 'all' ? undefined : [selectedStatus as any]
+      const filters: EventFilters = {}
+
+      // Apply status filter
+      if (selectedStatus !== 'all') {
+        filters.status = [selectedStatus as any]
+        console.log('📋 Applying status filter:', filters.status)
+      } else {
+        console.log('📋 No status filter applied (showing all events)')
       }
 
       if (selectedType !== 'all') {
@@ -47,11 +65,14 @@ const EventsPage: React.FC = () => {
         filters.location = searchQuery // Simplified search - could be enhanced
       }
 
+      console.log('🔍 Final filters:', filters)
       const result = await searchEvents(filters, 20)
+      console.log('✅ Search result:', { eventsCount: result.events.length, hasMore: result.hasMore, events: result.events })
+
       setEvents(result.events)
       setHasMore(result.hasMore)
     } catch (error) {
-      console.error('Error loading events:', error)
+      console.error('❌ Error loading events:', error)
       toast.error('Failed to load events')
     } finally {
       setIsLoading(false)
@@ -228,7 +249,7 @@ const EventsPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Events</h1>
           <p className="text-gray-600">Discover and join community events</p>
         </div>
-        <Button onClick={() => navigate('/create-event')} className="bg-orange-500 hover:bg-orange-600">
+        <Button onClick={() => navigate('/events/create')} className="bg-orange-500 hover:bg-orange-600">
           📅 Create Event
         </Button>
       </div>
@@ -334,7 +355,7 @@ const EventsPage: React.FC = () => {
                 ? 'Try adjusting your filters or search terms.'
                 : 'Be the first to create an event for the community!'}
             </p>
-            <Button onClick={() => navigate('/create-event')} className="bg-orange-500 hover:bg-orange-600">
+            <Button onClick={() => navigate('/events/create')} className="bg-orange-500 hover:bg-orange-600">
               Create First Event
             </Button>
           </div>

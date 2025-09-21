@@ -4,6 +4,9 @@ import { Input } from '../ui/Input'
 import { Card } from '../ui/Card'
 import { Alert } from '../ui/Alert'
 import { UserSummary, UserFilters } from '../../types'
+import { searchUsers, onUsersChange } from '../../services/userService'
+import { LoadingSpinner } from '../ui/LoadingSpinner'
+import { MemberCard } from './MemberCard'
 
 interface MemberDirectoryProps {
   onMemberSelect?: (member: UserSummary) => void
@@ -24,63 +27,27 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
   const [filters, setFilters] = useState<UserFilters>({})
   const [showFilters, setShowFilters] = useState(false)
 
-  // Mock data for demonstration - in real app, this would come from API
+  // Load members from Firebase with real-time updates
   useEffect(() => {
-    const loadMembers = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
+    setIsLoading(true)
+    setError(null)
 
-        // Mock member data
-        const mockMembers: UserSummary[] = [
-          {
-            uid: 'user1',
-            displayName: 'Alice Johnson',
-            profileImage: 'https://via.placeholder.com/100',
-            interests: ['Cooking', 'Gardening', 'Book Club'],
-            defaultAvailability: { weekdays: true, evenings: false, weekends: true }
-          },
-          {
-            uid: 'user2',
-            displayName: 'Bob Smith',
-            profileImage: 'https://via.placeholder.com/100',
-            interests: ['Photography', 'Hiking', 'Cooking'],
-            defaultAvailability: { weekdays: false, evenings: true, weekends: true }
-          },
-          {
-            uid: 'user3',
-            displayName: 'Carol Davis',
-            profileImage: 'https://via.placeholder.com/100',
-            interests: ['Yoga', 'Meditation', 'Book Club'],
-            defaultAvailability: { weekdays: true, evenings: true, weekends: false }
-          },
-          {
-            uid: 'user4',
-            displayName: 'David Wilson',
-            profileImage: 'https://via.placeholder.com/100',
-            interests: ['Music', 'Photography', 'Hiking'],
-            defaultAvailability: { weekdays: false, evenings: false, weekends: true }
-          }
-        ]
+    // Set up real-time listener for approved members
+    const unsubscribe = onUsersChange({ status: 'approved' }, (users) => {
+      setMembers(users)
+      setFilteredMembers(users)
+      setIsLoading(false)
+    })
 
-        setMembers(mockMembers)
-        setFilteredMembers(mockMembers)
-      } catch (err) {
-        console.error('Error loading members:', err)
-        setError('Failed to load member directory')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    loadMembers()
+    // Cleanup listener on unmount
+    return unsubscribe
   }, [])
 
-  // Filter and search members
+  // Filter and search members (client-side only since real-time listener handles server-side filtering)
   useEffect(() => {
     let filtered = members
 
-    // Apply search query
+    // Apply client-side search query (for interests and name matching)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(member =>
@@ -89,23 +56,8 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
       )
     }
 
-    // Apply filters
-    if (filters.status) {
-      filtered = filtered.filter(member => {
-        // In real app, this would check member status
-        return true // Mock implementation
-      })
-    }
-
-    if (filters.role) {
-      filtered = filtered.filter(member => {
-        // In real app, this would check member role
-        return true // Mock implementation
-      })
-    }
-
     setFilteredMembers(filtered)
-  }, [members, searchQuery, filters])
+  }, [members, searchQuery])
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value)
@@ -224,89 +176,14 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
       {/* Member List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredMembers.map((member) => (
-          <Card key={member.uid} className="p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-start space-x-4">
-              <img
-                src={member.profileImage || 'https://via.placeholder.com/60'}
-                alt={member.displayName}
-                className="w-12 h-12 rounded-full object-cover"
-              />
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold text-gray-900 truncate">
-                  {member.displayName}
-                </h3>
-
-                <div className="mt-2">
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Available:</span> {getAvailabilityText(member.defaultAvailability)}
-                  </p>
-                </div>
-
-                <div className="mt-3">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Interests:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {member.interests.slice(0, 3).map((interest) => (
-                      <span
-                        key={interest}
-                        className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"
-                      >
-                        {interest}
-                      </span>
-                    ))}
-                    {member.interests.length > 3 && (
-                      <span className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full">
-                        +{member.interests.length - 3} more
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-4 flex gap-2">
-                  {onMemberSelect && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onMemberSelect(member)}
-                      className="flex-1"
-                    >
-                      View Profile
-                    </Button>
-                  )}
-
-                  <div className="flex gap-1">
-                    {onContactMember && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => onContactMember(member, 'whatsapp')}
-                          title="WhatsApp"
-                        >
-                          📱
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => onContactMember(member, 'phone')}
-                          title="Call"
-                        >
-                          📞
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => onContactMember(member, 'email')}
-                          title="Email"
-                        >
-                          ✉️
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Card>
+          <MemberCard
+            key={member.uid}
+            member={member}
+            currentUserId={currentUserId}
+            onViewProfile={onMemberSelect}
+            onContact={onContactMember}
+            showContactButtons={true}
+          />
         ))}
       </div>
 

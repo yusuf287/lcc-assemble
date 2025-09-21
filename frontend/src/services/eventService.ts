@@ -170,9 +170,17 @@ export const createEvent = async (
       organizer: organizerId,
       dateTime: eventData.dateTime,
       duration: eventData.duration,
-      location: eventData.location,
-      capacity: eventData.capacity,
-      coverImage: undefined, // Will be uploaded separately
+      location: {
+        name: eventData.location.name,
+        address: eventData.location.address,
+        // Only include coordinates if they exist
+        ...(eventData.location.coordinates && {
+          coordinates: eventData.location.coordinates
+        })
+      },
+      // Only include capacity if it's defined
+      ...(eventData.capacity && { capacity: eventData.capacity }),
+      // Don't include coverImage field if undefined - will be added later via upload
       images: [],
       bringList: {
         enabled: eventData.bringList.enabled,
@@ -180,8 +188,8 @@ export const createEvent = async (
           id: `item_${index}`,
           item: item.item,
           quantity: item.quantity,
-          assignedTo: undefined,
           fulfilled: false
+          // assignedTo is omitted when undefined
         }))
       },
       attendees: {},
@@ -272,7 +280,62 @@ export const searchEvents = async (
   try {
     console.log('🔍 Searching events with filters:', filters)
 
-    // Try the optimized query first
+    // Check if we have any filters that require complex queries
+    const hasComplexFilters = (filters.status && filters.status.length > 0) ||
+                             (filters.visibility && filters.visibility.length > 0) ||
+                             (filters.type && filters.type.length > 0)
+
+    console.log('🔍 hasComplexFilters:', hasComplexFilters, 'filters:', filters)
+
+    // If no complex filters, use simple query to avoid index requirements
+    if (!hasComplexFilters) {
+      console.log('🔍 No complex filters, using simple query')
+      const simpleQuery = query(collection(db, EVENTS_COLLECTION), limit(pageSize * 2))
+      const querySnapshot = await getDocs(simpleQuery)
+      let events: EventSummary[] = []
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data()
+        events.push({
+          id: doc.id,
+          title: data.title,
+          type: data.type,
+          visibility: data.visibility,
+          organizer: data.organizer,
+          dateTime: timestampToDate(data.dateTime).toISOString(),
+          location: data.location,
+          capacity: data.capacity,
+          attendeeCount: Object.keys(data.attendees || {}).length,
+          coverImage: data.coverImage,
+          status: data.status
+        })
+      })
+
+      // Apply client-side filters for simple queries
+      if (filters.location && filters.location.trim()) {
+        console.log('🔍 Filtering by location:', filters.location)
+        events = events.filter(event =>
+          event.location?.name?.toLowerCase().includes(filters.location!.toLowerCase()) ||
+          event.location?.address?.toLowerCase().includes(filters.location!.toLowerCase())
+        )
+      }
+
+      // Sort by date (newest first for display)
+      events.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime())
+
+      // Apply pagination
+      const startIndex = startAfterDoc ? events.findIndex(e => e.id === startAfterDoc.id) + 1 : 0
+      const paginatedEvents = events.slice(startIndex, startIndex + pageSize)
+
+      console.log(`✅ Found ${paginatedEvents.length} events (simple query)`)
+      return {
+        events: paginatedEvents,
+        totalCount: events.length,
+        hasMore: startIndex + pageSize < events.length
+      }
+    }
+
+    // Try the optimized query first for complex filters
     try {
       let q = query(collection(db, EVENTS_COLLECTION))
 
@@ -337,6 +400,7 @@ export const searchEvents = async (
 
         querySnapshot.forEach((doc) => {
           const data = doc.data()
+          console.log('📄 Raw event data:', { id: doc.id, status: data.status, title: data.title })
           events.push({
             id: doc.id,
             title: data.title,
@@ -353,17 +417,29 @@ export const searchEvents = async (
         })
 
         // Apply client-side filters
+        console.log('🎯 Applying client-side filters:', filters)
+        console.log('📊 Events before filtering:', events.length, events.map(e => ({ id: e.id, status: e.status, visibility: e.visibility, type: e.type })))
+
         if (filters.status && filters.status.length > 0) {
-          events = events.filter(event => filters.status!.includes(event.status))
+          console.log('🔍 Filtering by status:', filters.status)
+          events = events.filter(event => {
+            const matches = filters.status!.includes(event.status)
+            console.log(`Event ${event.id}: status=${event.status}, matches=${matches}`)
+            return matches
+          })
         }
 
         if (filters.visibility && filters.visibility.length > 0) {
+          console.log('🔍 Filtering by visibility:', filters.visibility)
           events = events.filter(event => filters.visibility!.includes(event.visibility))
         }
 
         if (filters.type && filters.type.length > 0) {
+          console.log('🔍 Filtering by type:', filters.type)
           events = events.filter(event => filters.type!.includes(event.type))
         }
+
+        console.log('📊 Events after filtering:', events.length)
 
         // Apply sorting
         events.sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
@@ -552,33 +628,76 @@ export const uploadEventImage = async (
 // Get user's events
 export const getUserEvents = async (userId: string): Promise<EventSummary[]> => {
   try {
-    const q = query(
-      collection(db, EVENTS_COLLECTION),
-      where('organizer', '==', userId),
-      orderBy('dateTime', 'desc')
-    )
+    // Try the optimized query first (requires composite index)
+    try {
+      const q = query(
+        collection(db, EVENTS_COLLECTION),
+        where('organizer', '==', userId),
+        orderBy('dateTime', 'desc')
+      )
 
-    const querySnapshot = await getDocs(q)
-    const events: EventSummary[] = []
+      const querySnapshot = await getDocs(q)
+      const events: EventSummary[] = []
 
-    querySnapshot.forEach((doc) => {
-      const data = doc.data()
-      events.push({
-        id: doc.id,
-        title: data.title,
-        type: data.type,
-        visibility: data.visibility,
-        organizer: data.organizer,
-        dateTime: timestampToDate(data.dateTime).toISOString(),
-        location: data.location,
-        capacity: data.capacity,
-        attendeeCount: Object.keys(data.attendees || {}).length,
-        coverImage: data.coverImage,
-        status: data.status
+      querySnapshot.forEach((doc) => {
+        const data = doc.data()
+        events.push({
+          id: doc.id,
+          title: data.title,
+          type: data.type,
+          visibility: data.visibility,
+          organizer: data.organizer,
+          dateTime: timestampToDate(data.dateTime).toISOString(),
+          location: data.location,
+          capacity: data.capacity,
+          attendeeCount: Object.keys(data.attendees || {}).length,
+          coverImage: data.coverImage,
+          status: data.status
+        })
       })
-    })
 
-    return events
+      console.log(`✅ Found ${events.length} user events (optimized query)`)
+      return events
+    } catch (indexError: any) {
+      // If index error occurs, fall back to client-side filtering
+      if (indexError.message?.includes('index')) {
+        console.warn('⚠️ Firestore index not ready for user events, using client-side filtering')
+
+        // Fallback: Get all events and filter client-side
+        const fallbackQuery = query(collection(db, EVENTS_COLLECTION), limit(100))
+        const querySnapshot = await getDocs(fallbackQuery)
+        let events: EventSummary[] = []
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data()
+          // Only include events organized by this user
+          if (data.organizer === userId) {
+            events.push({
+              id: doc.id,
+              title: data.title,
+              type: data.type,
+              visibility: data.visibility,
+              organizer: data.organizer,
+              dateTime: timestampToDate(data.dateTime).toISOString(),
+              location: data.location,
+              capacity: data.capacity,
+              attendeeCount: Object.keys(data.attendees || {}).length,
+              coverImage: data.coverImage,
+              status: data.status
+            })
+          }
+        })
+
+        // Sort by date (newest first)
+        events.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime())
+
+        console.log(`✅ Found ${events.length} user events (client-side filtered)`)
+        return events
+      } else {
+        // Re-throw non-index errors
+        throw indexError
+      }
+    }
   } catch (error) {
     console.error('Error getting user events:', error)
     throw new Error('Failed to get user events')

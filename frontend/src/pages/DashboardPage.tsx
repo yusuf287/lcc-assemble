@@ -93,7 +93,7 @@ const DashboardPage: React.FC = () => {
           <p className="text-gray-600">Welcome to your LCC Assemble dashboard</p>
         </div>
         <div className="flex space-x-3">
-          <Button onClick={() => navigate('/create-event')} className="bg-orange-500 hover:bg-orange-600">
+          <Button onClick={() => navigate('/events/create')} className="bg-orange-500 hover:bg-orange-600">
             📅 Create Event
           </Button>
         </div>
@@ -145,7 +145,7 @@ const DashboardPage: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
           <div className="space-y-3">
             <Button
-              onClick={() => navigate('/create-event')}
+              onClick={() => navigate('/events/create')}
               className="w-full justify-start bg-orange-500 hover:bg-orange-600"
             >
               📅 Create New Event
@@ -213,7 +213,7 @@ const DashboardPage: React.FC = () => {
               <p className="text-gray-500 mb-3">No upcoming events</p>
               <Button
                 size="sm"
-                onClick={() => navigate('/create-event')}
+                onClick={() => navigate('/events/create')}
                 className="bg-orange-500 hover:bg-orange-600"
               >
                 Create First Event
