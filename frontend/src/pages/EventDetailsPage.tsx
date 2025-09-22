@@ -162,6 +162,21 @@ const EventDetailsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Cancellation Notice */}
+      {event.status === 'cancelled' && (
+        <Card className="p-4 bg-red-50 border-red-200">
+          <div className="flex items-center">
+            <span className="text-2xl mr-3">⚠️</span>
+            <div>
+              <h3 className="text-lg font-semibold text-red-800">Event Cancelled</h3>
+              <p className="text-red-700">
+                This event has been cancelled by the organizer. RSVPs and event details are preserved for transparency.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Event Header */}
       <div className="relative">
         {(() => {
@@ -195,6 +210,11 @@ const EventDetailsPage: React.FC = () => {
                   {event.status === 'published' && (
                     <span className="px-3 py-1 text-sm font-medium rounded-full bg-green-500">
                       Published
+                    </span>
+                  )}
+                  {event.status === 'cancelled' && (
+                    <span className="px-3 py-1 text-sm font-medium rounded-full bg-red-500">
+                      CANCELLED
                     </span>
                   )}
                 </div>

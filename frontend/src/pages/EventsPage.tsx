@@ -23,7 +23,7 @@ const EventsPage: React.FC = () => {
   // Set default filter based on user login status
   useEffect(() => {
     if (user) {
-      setSelectedStatus('all') // Show all events for logged-in users so they can see their drafts
+      setSelectedStatus('published') // Show published events for logged-in users by default
     } else {
       setSelectedStatus('published') // Show only published events for anonymous users
     }
@@ -138,18 +138,27 @@ const EventsPage: React.FC = () => {
 
         <div className="p-4">
         <div className="flex items-start justify-between mb-2">
-          <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
+          <h3 className={`text-lg font-semibold line-clamp-2 ${
+            event.status === 'cancelled' ? 'text-gray-500 line-through' : 'text-gray-900'
+          }`}>
             {event.title}
           </h3>
-          <span className={`px-2 py-1 text-xs font-medium rounded-full ml-2 flex-shrink-0 ${
-            event.type === 'birthday' ? 'bg-pink-100 text-pink-800' :
-            event.type === 'potluck' ? 'bg-orange-100 text-orange-800' :
-            event.type === 'farewell' ? 'bg-blue-100 text-blue-800' :
-            event.type === 'celebration' ? 'bg-green-100 text-green-800' :
-            'bg-gray-100 text-gray-800'
-          }`}>
-            {event.type}
-          </span>
+          <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
+            {event.status === 'cancelled' && (
+              <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                CANCELLED
+              </span>
+            )}
+            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+              event.type === 'birthday' ? 'bg-pink-100 text-pink-800' :
+              event.type === 'potluck' ? 'bg-orange-100 text-orange-800' :
+              event.type === 'farewell' ? 'bg-blue-100 text-blue-800' :
+              event.type === 'celebration' ? 'bg-green-100 text-green-800' :
+              'bg-gray-100 text-gray-800'
+            }`}>
+              {event.type}
+            </span>
+          </div>
         </div>
 
         <div className="space-y-2 text-sm text-gray-600">
@@ -201,10 +210,17 @@ const EventsPage: React.FC = () => {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
-            <h3 className="text-lg font-semibold text-gray-900 truncate">
+            <h3 className={`text-lg font-semibold truncate ${
+              event.status === 'cancelled' ? 'text-gray-500 line-through' : 'text-gray-900'
+            }`}>
               {event.title}
             </h3>
             <div className="flex items-center space-x-2 ml-4">
+              {event.status === 'cancelled' && (
+                <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                  CANCELLED
+                </span>
+              )}
               <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                 event.type === 'birthday' ? 'bg-pink-100 text-pink-800' :
                 event.type === 'potluck' ? 'bg-orange-100 text-orange-800' :
@@ -287,6 +303,7 @@ const EventsPage: React.FC = () => {
             >
               <option value="published">Published Events</option>
               <option value="all">All Events</option>
+              <option value="cancelled">Cancelled Events</option>
             </select>
 
             <div className="flex items-center space-x-2">

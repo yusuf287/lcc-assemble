@@ -518,28 +518,37 @@ export const rsvpToEvent = async (
     }
 
     const updatedAttendees = { ...event.attendees }
-    if (rsvpData.status === 'not_going') {
-      delete updatedAttendees[userId]
-      // Remove from waitlist if present
-      const updatedWaitlist = event.waitlist.filter(id => id !== userId)
-      await updateDoc(doc(db, EVENTS_COLLECTION, eventId), {
-        attendees: updatedAttendees,
-        waitlist: updatedWaitlist,
-        updatedAt: dateToTimestamp(new Date())
-      })
-    } else {
-      updatedAttendees[userId] = attendeeInfo
-      await updateDoc(doc(db, EVENTS_COLLECTION, eventId), {
-        attendees: {
-          ...updatedAttendees,
-          [userId]: {
-            ...attendeeInfo,
-            rsvpAt: dateToTimestamp(attendeeInfo.rsvpAt)
-          }
-        },
-        updatedAt: dateToTimestamp(new Date())
-      })
+    const updatedWaitlist = [...event.waitlist]
+
+    // Always record the RSVP status
+    updatedAttendees[userId] = attendeeInfo
+
+    // Handle waitlist logic
+    if (rsvpData.status === 'going') {
+      // Remove from waitlist if they were on it
+      const waitlistIndex = updatedWaitlist.indexOf(userId)
+      if (waitlistIndex > -1) {
+        updatedWaitlist.splice(waitlistIndex, 1)
+      }
+    } else if (rsvpData.status === 'not_going') {
+      // Remove from waitlist if they were on it
+      const waitlistIndex = updatedWaitlist.indexOf(userId)
+      if (waitlistIndex > -1) {
+        updatedWaitlist.splice(waitlistIndex, 1)
+      }
     }
+
+    await updateDoc(doc(db, EVENTS_COLLECTION, eventId), {
+      attendees: {
+        ...updatedAttendees,
+        [userId]: {
+          ...attendeeInfo,
+          rsvpAt: dateToTimestamp(attendeeInfo.rsvpAt)
+        }
+      },
+      waitlist: updatedWaitlist,
+      updatedAt: dateToTimestamp(new Date())
+    })
 
     return {
       success: true,

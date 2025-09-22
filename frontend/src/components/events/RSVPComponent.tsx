@@ -20,6 +20,7 @@ export const RSVPComponent: React.FC<RSVPComponentProps> = ({
   const [showRSVPForm, setShowRSVPForm] = useState(false)
   const [isRSVPing, setIsRSVPing] = useState(false)
 
+
   if (!user) {
     return (
       <Card className="p-6">
