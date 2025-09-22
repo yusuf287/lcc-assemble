@@ -32,6 +32,7 @@ const CreateEventPage: React.FC = () => {
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [uploadStatus, setUploadStatus] = useState<string>('')
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null)
   const [coverImagePreview, setCoverImagePreview] = useState<string>('')
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
@@ -217,6 +218,7 @@ const CreateEventPage: React.FC = () => {
 
     try {
       setIsSubmitting(true)
+      setUploadStatus('')
 
       // Prepare form data with invited members
       const eventData = {
@@ -225,14 +227,20 @@ const CreateEventPage: React.FC = () => {
       }
 
       // Create the event
+      setUploadStatus('Creating event...')
       const eventId = await createEvent(user.uid, eventData)
 
       // Upload cover image if provided
       if (coverImageFile) {
         try {
-          await uploadEventImage(eventId, coverImageFile, true)
+          setUploadStatus('Uploading cover image...')
+          const imageUrl = await uploadEventImage(eventId, coverImageFile, true)
+
+          setUploadStatus('Finalizing...')
+          // Small delay to ensure real-time listener picks up the change
+          await new Promise(resolve => setTimeout(resolve, 500))
         } catch (imageError) {
-          console.warn('Failed to upload cover image:', imageError)
+          console.error('Failed to upload cover image:', imageError)
           // Don't fail the whole process for image upload issues
         }
       }
@@ -247,6 +255,7 @@ const CreateEventPage: React.FC = () => {
       toast.error(error.message || 'Failed to create event. Please try again.')
     } finally {
       setIsSubmitting(false)
+      setUploadStatus('')
     }
   }
 
@@ -607,11 +616,6 @@ const CreateEventPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> Your event will be saved as a draft. You can review and publish it from the event details page.
-                </p>
-              </div>
             </div>
           </div>
         )
@@ -686,7 +690,7 @@ const CreateEventPage: React.FC = () => {
               {isSubmitting ? (
                 <>
                   <LoadingSpinner className="w-4 h-4 mr-2" />
-                  Creating Event...
+                  {uploadStatus || 'Creating Event...'}
                 </>
               ) : (
                 'Create Event'

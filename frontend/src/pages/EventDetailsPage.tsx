@@ -35,7 +35,13 @@ const EventDetailsPage: React.FC = () => {
       setIsLoading(true)
       console.log('🔍 Loading event details for ID:', eventId)
       const eventData = await getEvent(eventId)
-      console.log('✅ Event data loaded:', eventData)
+      console.log('✅ Event data loaded:', {
+        id: eventData?.id,
+        title: eventData?.title,
+        coverImage: eventData?.coverImage,
+        hasCoverImage: !!eventData?.coverImage,
+        status: eventData?.status
+      })
 
       if (!eventData) {
         console.warn('❌ Event not found for ID:', eventId)
@@ -83,7 +89,24 @@ const EventDetailsPage: React.FC = () => {
         }
       })
 
-      return unsubscribe
+      // Fallback: Check for updates after 3 seconds in case real-time listener fails
+      const fallbackTimer = setTimeout(async () => {
+        try {
+          console.log('🔄 Fallback check: Re-fetching event data')
+          const freshEventData = await getEvent(eventId)
+          if (freshEventData && freshEventData.coverImage !== eventData.coverImage) {
+            setEvent(freshEventData)
+          }
+        } catch (error) {
+          console.warn('Fallback check failed:', error)
+        }
+      }, 3000)
+
+      // Return cleanup function for both listener and timer
+      return () => {
+        unsubscribe()
+        clearTimeout(fallbackTimer)
+      }
     } catch (error) {
       console.error('❌ Error loading event details:', error)
       const errorDetails = error as any
@@ -141,56 +164,59 @@ const EventDetailsPage: React.FC = () => {
     <div className="space-y-6">
       {/* Event Header */}
       <div className="relative">
-        {event.coverImage && (
-          <div className="h-64 md:h-80 bg-gray-200 relative overflow-hidden rounded-lg">
-            <img
-              src={event.coverImage}
-              alt={event.title}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-black bg-opacity-30" />
-            <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-              <div className="flex items-center space-x-2 mb-2">
-                <span className={`px-3 py-1 text-sm font-medium rounded-full ${
-                  event.type === 'birthday' ? 'bg-pink-500' :
-                  event.type === 'potluck' ? 'bg-orange-500' :
-                  event.type === 'farewell' ? 'bg-blue-500' :
-                  event.type === 'celebration' ? 'bg-green-500' :
-                  'bg-gray-500'
-                }`}>
+        {(() => {
+          console.log('🎨 Rendering event header, coverImage:', event.coverImage, 'condition:', !!event.coverImage)
+          return event.coverImage ? (
+            <div className="h-64 md:h-80 bg-gray-200 relative overflow-hidden rounded-lg">
+              <img
+                src={event.coverImage}
+                alt={event.title}
+                className="w-full h-full object-cover"
+                onLoad={() => console.log('🖼️ Cover image loaded successfully')}
+                onError={(e) => console.log('❌ Cover image failed to load:', e)}
+              />
+              <div className="absolute inset-0 bg-black bg-opacity-30" />
+              <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${
+                    event.type === 'birthday' ? 'bg-pink-500' :
+                    event.type === 'potluck' ? 'bg-orange-500' :
+                    event.type === 'farewell' ? 'bg-blue-500' :
+                    event.type === 'celebration' ? 'bg-green-500' :
+                    'bg-gray-500'
+                  }`}>
+                    {event.type}
+                  </span>
+                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${
+                    event.visibility === 'public' ? 'bg-green-500' : 'bg-blue-500'
+                  }`}>
+                    {event.visibility}
+                  </span>
+                  {event.status === 'published' && (
+                    <span className="px-3 py-1 text-sm font-medium rounded-full bg-green-500">
+                      Published
+                    </span>
+                  )}
+                </div>
+                <h1 className="text-3xl md:text-4xl font-bold mb-2">{event.title}</h1>
+                <p className="text-lg opacity-90">{event.description}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-8 rounded-lg">
+              <div className="flex items-center space-x-2 mb-4">
+                <span className={`px-3 py-1 text-sm font-medium rounded-full bg-white bg-opacity-20`}>
                   {event.type}
                 </span>
-                <span className={`px-3 py-1 text-sm font-medium rounded-full ${
-                  event.visibility === 'public' ? 'bg-green-500' : 'bg-blue-500'
-                }`}>
+                <span className={`px-3 py-1 text-sm font-medium rounded-full bg-white bg-opacity-20`}>
                   {event.visibility}
                 </span>
-                {event.status === 'published' && (
-                  <span className="px-3 py-1 text-sm font-medium rounded-full bg-green-500">
-                    Published
-                  </span>
-                )}
               </div>
               <h1 className="text-3xl md:text-4xl font-bold mb-2">{event.title}</h1>
               <p className="text-lg opacity-90">{event.description}</p>
             </div>
-          </div>
-        )}
-
-        {!event.coverImage && (
-          <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-8 rounded-lg">
-            <div className="flex items-center space-x-2 mb-4">
-              <span className={`px-3 py-1 text-sm font-medium rounded-full bg-white bg-opacity-20`}>
-                {event.type}
-              </span>
-              <span className={`px-3 py-1 text-sm font-medium rounded-full bg-white bg-opacity-20`}>
-                {event.visibility}
-              </span>
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">{event.title}</h1>
-            <p className="text-lg opacity-90">{event.description}</p>
-          </div>
-        )}
+          )
+        })()}
       </div>
 
       {/* RSVP Component */}

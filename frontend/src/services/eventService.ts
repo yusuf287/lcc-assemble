@@ -194,7 +194,7 @@ export const createEvent = async (
       },
       attendees: {},
       waitlist: [],
-      status: 'draft',
+      status: 'published',
       createdAt: now,
       updatedAt: now
     }
@@ -597,15 +597,19 @@ export const uploadEventImage = async (
   isCoverImage: boolean = false
 ): Promise<string> => {
   try {
+    console.log('📤 Starting image upload for event:', eventId, 'isCoverImage:', isCoverImage)
     const storageRef = ref(storage, `events/${eventId}/${file.name}`)
     const snapshot = await uploadBytes(storageRef, file)
     const downloadURL = await getDownloadURL(snapshot.ref)
+    console.log('✅ Image uploaded to storage, URL:', downloadURL)
 
     if (isCoverImage) {
+      console.log('🖼️ Updating event document with cover image')
       await updateDoc(doc(db, EVENTS_COLLECTION, eventId), {
         coverImage: downloadURL,
         updatedAt: dateToTimestamp(new Date())
       })
+      console.log('✅ Cover image updated in event document')
     } else {
       // Add to images array
       const event = await getEvent(eventId)
@@ -615,12 +619,13 @@ export const uploadEventImage = async (
           images: updatedImages,
           updatedAt: dateToTimestamp(new Date())
         })
+        console.log('✅ Additional image added to event document')
       }
     }
 
     return downloadURL
   } catch (error) {
-    console.error('Error uploading event image:', error)
+    console.error('❌ Error uploading event image:', error)
     throw new Error('Failed to upload image')
   }
 }
