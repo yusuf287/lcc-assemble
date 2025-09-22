@@ -14,6 +14,7 @@ import { Toaster } from 'react-hot-toast'
 // Pages
 import LoginPage from './pages/LoginPage'
 import RegistrationPage from './pages/RegistrationPage'
+import EmailVerificationPage from './pages/EmailVerificationPage'
 import TestPage from './pages/TestPage'
 import DashboardPage from './pages/DashboardPage'
 import EventsPage from './pages/EventsPage'
@@ -241,6 +242,10 @@ function App() {
                   <RegistrationPage />
                 </PublicRoute>
               }
+            />
+            <Route
+              path="/email-verification"
+              element={<EmailVerificationPage />}
             />
 
             {/* Protected Routes */}

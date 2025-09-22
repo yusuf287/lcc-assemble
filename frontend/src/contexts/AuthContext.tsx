@@ -7,7 +7,10 @@ import {
   signOut,
   sendPasswordResetEmail,
   sendEmailVerification,
-  updateProfile
+  updateProfile,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential
 } from 'firebase/auth'
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
 import { auth, db } from '../services/firebase'
@@ -21,6 +24,10 @@ interface AuthContextType {
   logout: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
   updateProfile: (updates: Partial<AppUser>) => Promise<void>
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>
+  resendEmailVerification: () => Promise<void>
+  checkEmailVerificationStatus: () => Promise<boolean>
+  verifyEmailManually: (userId: string) => Promise<void>
   // Legacy aliases for backward compatibility
   signIn?: (email: string, password: string) => Promise<void>
   isLoading?: boolean
@@ -136,16 +143,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       console.error('Login error:', error)
       const errorMessage = error.code === 'auth/user-not-found'
-        ? 'No account found with this email address.'
+        ? 'No account found with this email address. Please check your email or sign up for a new account.'
         : error.code === 'auth/wrong-password'
-        ? 'Incorrect password. Please try again.'
+        ? 'Incorrect password. Please try again or reset your password.'
+        : error.code === 'auth/invalid-credential'
+        ? 'Invalid email or password. Please check your credentials and try again.'
         : error.code === 'auth/invalid-email'
         ? 'Please enter a valid email address.'
         : error.code === 'auth/user-disabled'
-        ? 'This account has been disabled.'
+        ? 'This account has been disabled. Please contact an administrator.'
         : error.code === 'auth/too-many-requests'
-        ? 'Too many failed login attempts. Please try again later.'
-        : error.message || 'Login failed'
+        ? 'Too many failed login attempts. Please wait a few minutes before trying again.'
+        : error.code === 'auth/network-request-failed'
+        ? 'Network error. Please check your internet connection and try again.'
+        : error.code === 'auth/operation-not-allowed'
+        ? 'This sign-in method is not enabled. Please contact support.'
+        : error.message || 'Login failed. Please try again.'
 
       setError(errorMessage)
       throw new Error(errorMessage)
@@ -211,8 +224,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Step 4: Send email verification
       console.log('🔥 Sending email verification...')
-      await sendEmailVerification(userCredential.user)
-      console.log('✅ Email verification sent')
+      try {
+        await sendEmailVerification(userCredential.user)
+        console.log('✅ Email verification sent successfully')
+      } catch (emailError: any) {
+        console.error('❌ Email verification failed:', emailError)
+        console.error('❌ Email error code:', emailError.code)
+        console.error('❌ Email error message:', emailError.message)
+
+        // Don't fail registration if email verification fails
+        // User can still verify later or use manual verification in development
+        console.warn('⚠️ Registration completed but email verification failed. User may need to verify manually.')
+
+        // In development, automatically mark email as verified for testing
+        if (import.meta.env.DEV && import.meta.env.VITE_SKIP_EMAIL_VERIFICATION === 'true') {
+          console.log('🔧 DEVELOPMENT: Auto-verifying email for testing')
+          const userDocRef = doc(db, 'users', userCredential.user.uid)
+          await updateDoc(userDocRef, {
+            emailVerified: true,
+            updatedAt: new Date()
+          })
+        }
+      }
 
       console.log('🎉 Registration completed successfully!')
 
@@ -224,11 +257,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const errorMessage = error.code === 'auth/email-already-in-use'
         ? 'This email is already registered. Please try logging in instead.'
         : error.code === 'auth/weak-password'
-        ? 'Password is too weak. Please choose a stronger password.'
+        ? 'Password is too weak. Please choose a stronger password (at least 6 characters).'
         : error.code === 'auth/invalid-email'
         ? 'Please enter a valid email address.'
+        : error.code === 'auth/operation-not-allowed'
+        ? 'Email/password registration is not enabled. Please contact support.'
+        : error.code === 'auth/too-many-requests'
+        ? 'Too many registration attempts. Please wait a few minutes before trying again.'
+        : error.code === 'auth/network-request-failed'
+        ? 'Network error. Please check your internet connection and try again.'
         : error.code === 'permission-denied'
-        ? 'Permission denied. Please check Firestore security rules.'
+        ? 'Registration is currently disabled. Please contact an administrator.'
         : error.code === 'unavailable'
         ? 'Service temporarily unavailable. Please try again later.'
         : error.message || 'Registration failed. Please try again.'
@@ -254,7 +293,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await sendPasswordResetEmail(auth, email)
     } catch (error: any) {
       console.error('Password reset error:', error)
-      throw new Error(error.message || 'Password reset failed')
+      console.error('Error code:', error.code)
+      console.error('Error message:', error.message)
+
+      const errorMessage = error.code === 'auth/user-not-found'
+        ? 'No account found with this email address.'
+        : error.code === 'auth/invalid-email'
+        ? 'Please enter a valid email address.'
+        : error.code === 'auth/too-many-requests'
+        ? 'Too many password reset requests. Please wait before trying again.'
+        : error.code === 'auth/network-request-failed'
+        ? 'Network error. Please check your internet connection and try again.'
+        : error.message || 'Password reset failed. Please try again.'
+
+      throw new Error(errorMessage)
     }
   }
 
@@ -281,6 +333,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
+  // Change password function
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+    if (!auth.currentUser) {
+      throw new Error('No user logged in')
+    }
+
+    if (!auth.currentUser.email) {
+      throw new Error('User email not available')
+    }
+
+    try {
+      // Re-authenticate user with current password
+      const credential = EmailAuthProvider.credential(auth.currentUser.email, currentPassword)
+      await reauthenticateWithCredential(auth.currentUser, credential)
+
+      // Update password
+      await updatePassword(auth.currentUser, newPassword)
+
+      console.log('✅ Password changed successfully')
+    } catch (error: any) {
+      console.error('❌ Password change error:', error)
+      console.error('❌ Error code:', error.code)
+      console.error('❌ Error message:', error.message)
+
+      const errorMessage = error.code === 'auth/wrong-password'
+        ? 'Current password is incorrect'
+        : error.code === 'auth/weak-password'
+        ? 'New password is too weak. Please choose a stronger password.'
+        : error.code === 'auth/requires-recent-login'
+        ? 'Please log out and log back in before changing your password.'
+        : error.message || 'Failed to change password'
+
+      throw new Error(errorMessage)
+    }
+  }
+
   // Manual email verification for testing
   const verifyEmailManually = async (userId: string): Promise<void> => {
     try {
@@ -295,6 +383,59 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       console.error('Manual verification error:', error)
       throw new Error('Manual verification failed')
+    }
+  }
+
+  // Resend email verification
+  const resendEmailVerification = async (): Promise<void> => {
+    if (!auth.currentUser) {
+      throw new Error('No user logged in')
+    }
+
+    try {
+      console.log('🔄 Resending email verification...')
+      await sendEmailVerification(auth.currentUser)
+      console.log('✅ Email verification resent successfully')
+    } catch (error: any) {
+      console.error('❌ Resend email verification failed:', error)
+      console.error('❌ Error code:', error.code)
+      console.error('❌ Error message:', error.message)
+
+      const errorMessage = error.code === 'auth/too-many-requests'
+        ? 'Too many requests. Please wait before requesting another verification email.'
+        : error.code === 'auth/user-token-expired'
+        ? 'Your session has expired. Please log in again.'
+        : error.message || 'Failed to resend verification email'
+
+      throw new Error(errorMessage)
+    }
+  }
+
+  // Check email verification status
+  const checkEmailVerificationStatus = async (): Promise<boolean> => {
+    if (!auth.currentUser) {
+      return false
+    }
+
+    try {
+      // Refresh user data to get latest email verification status
+      await auth.currentUser.reload()
+      const isVerified = auth.currentUser.emailVerified
+      console.log('📧 Email verification status:', isVerified)
+
+      // Also check our database record
+      const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid))
+      if (userDoc.exists()) {
+        const userData = userDoc.data() as AppUser
+        const dbEmailVerified = userData.emailVerified || false
+        console.log('📧 Database email verification status:', dbEmailVerified)
+        return dbEmailVerified
+      }
+
+      return isVerified
+    } catch (error: any) {
+      console.error('❌ Error checking email verification status:', error)
+      return false
     }
   }
 
@@ -313,6 +454,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     resetPassword,
     updateProfile: updateUserProfile,
+    changePassword,
+    resendEmailVerification,
+    checkEmailVerificationStatus,
+    verifyEmailManually,
     // Legacy aliases
     signIn,
     isLoading,

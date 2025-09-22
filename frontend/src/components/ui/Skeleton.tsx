@@ -31,7 +31,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
 
   const combinedClasses = `${baseClasses} ${variantClasses[variant]} ${className}`.trim()
 
-  return <div className={combinedClasses} style={style} />
+  return <div className={combinedClasses} style={style} role="presentation" />
 }
 
 // Specific skeleton components

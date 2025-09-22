@@ -12,6 +12,7 @@ export interface User {
   privacy: UserPrivacySettings
   role: UserRole
   status: UserStatus
+  emailVerified?: boolean
   defaultAvailability: UserAvailability
   createdAt: Date
   updatedAt: Date

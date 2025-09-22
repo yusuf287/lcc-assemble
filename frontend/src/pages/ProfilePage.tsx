@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { ProfileForm } from '../components/profile/ProfileForm'
+import { PasswordChangeForm } from '../components/profile/PasswordChangeForm'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
@@ -10,9 +11,15 @@ import toast from 'react-hot-toast'
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate()
   const { userProfile, logout } = useAuth()
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
 
   const handleProfileUpdateSuccess = () => {
     toast.success('Profile updated successfully!')
+  }
+
+  const handlePasswordChangeSuccess = () => {
+    toast.success('Password changed successfully!')
+    setShowPasswordForm(false)
   }
 
   const handleLogout = async () => {
@@ -92,6 +99,31 @@ const ProfilePage: React.FC = () => {
 
       {/* Profile Form */}
       <ProfileForm onSuccess={handleProfileUpdateSuccess} />
+
+      {/* Password Change Section */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Password & Security</h3>
+            <p className="text-gray-600 mt-1">Change your password to keep your account secure</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setShowPasswordForm(!showPasswordForm)}
+          >
+            {showPasswordForm ? 'Cancel' : 'Change Password'}
+          </Button>
+        </div>
+
+        {showPasswordForm && (
+          <div className="mt-6">
+            <PasswordChangeForm
+              onSuccess={handlePasswordChangeSuccess}
+              onCancel={() => setShowPasswordForm(false)}
+            />
+          </div>
+        )}
+      </Card>
 
       {/* Account Statistics */}
       <Card className="p-6">

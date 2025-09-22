@@ -47,7 +47,7 @@ import { Button } from '../../src/components/ui/Button'
 import { Input } from '../../src/components/ui/Input'
 import { Card } from '../../src/components/ui/Card'
 import { LoadingSpinner } from '../../src/components/ui/LoadingSpinner'
-import { Skeleton } from '../../src/components/ui/Skeleton'
+import { Skeleton, SkeletonText, SkeletonCard, SkeletonList, SkeletonTable } from '../../src/components/ui/Skeleton'
 
 // Test Button component
 describe('Button Component', () => {
@@ -250,14 +250,14 @@ describe('SkeletonList Component', () => {
   test('renders list skeleton with default items', () => {
     render(<SkeletonList />)
     const skeletons = screen.getAllByRole('presentation')
-    // Each item has avatar + text, so 6 skeletons for 3 items
-    expect(skeletons).toHaveLength(6)
+    // Each item has avatar + 2 text skeletons, so 9 skeletons for 3 items
+    expect(skeletons).toHaveLength(9)
   })
 
   test('renders custom number of items', () => {
     render(<SkeletonList items={5} />)
     const skeletons = screen.getAllByRole('presentation')
-    expect(skeletons).toHaveLength(10) // 2 skeletons per item
+    expect(skeletons).toHaveLength(15) // 3 skeletons per item
   })
 })
 

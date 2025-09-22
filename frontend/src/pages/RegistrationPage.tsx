@@ -112,10 +112,9 @@ const RegistrationPage: React.FC = () => {
       )
 
       console.log('🎉 Registration successful!')
-      console.log('🔑 Temporary password:', tempPassword)
 
-      // Show success message with password prominently
-      toast.success('🎉 Registration successful!', {
+      // Show success message
+      toast.success('🎉 Registration successful! Please check your email for verification.', {
         duration: 5000,
         style: {
           background: '#10B981',
@@ -125,24 +124,10 @@ const RegistrationPage: React.FC = () => {
         }
       })
 
-      // Show password in a separate prominent toast
+      // Navigate to email verification page
       setTimeout(() => {
-        toast.success(`🔑 Your temporary password: ${tempPassword}`, {
-          duration: 10000,
-          style: {
-            background: '#F59E0B',
-            color: '#000',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            border: '2px solid #000'
-          }
-        })
-      }, 1000)
-
-      // Navigate after showing messages
-      setTimeout(() => {
-        navigate('/login')
-      }, 3000)
+        navigate(`/email-verification?email=${encodeURIComponent(data.email)}`)
+      }, 2000)
     } catch (error: any) {
       console.error('❌ Registration submission error:', error)
       console.error('❌ Error details:', {
