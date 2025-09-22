@@ -36,7 +36,7 @@ scripts:
 - Phase 3-4: Implementation execution (manual or via tools)
 
 ## Summary
-LCC Assemble is a community event management platform that enables members of the Lakeshore Cultural Committee to organize and participate in events like potlucks, birthdays, and celebrations. The platform provides features for event creation, RSVP management, bring lists coordination, member directory, and admin controls, all built as a mobile-responsive web application using React + TypeScript, Firebase backend services, and Tailwind CSS for styling, ensuring zero-cost sustainability and privacy by design.
+LCC Assemble is a community event management platform that enables members of the Lakeshore Cultural Committee to organize and participate in events like potlucks, birthdays, and celebrations. The platform provides features for event creation, RSVP management, bring lists coordination, member directory, admin controls, and a public information page about the community, all built as a mobile-responsive web application using React + TypeScript, Firebase backend services, and Tailwind CSS for styling, ensuring zero-cost sustainability and privacy by design.
 
 ## Technical Context
 **Language/Version**: TypeScript 5.0+ with React 18+  
@@ -240,12 +240,13 @@ ios/ or android/
 - Parallel execution: Independent components (models, tests, UI components)
 - Sequential: Auth-dependent features, admin features
 
-**Estimated Output**: 35-40 numbered, ordered tasks in tasks.md covering:
+**Estimated Output**: 40-45 numbered, ordered tasks in tasks.md covering:
 - Firebase project setup and configuration
 - Authentication system implementation
 - Data models and Firestore integration
 - Core user flows (registration, profile, events, RSVP)
 - Admin dashboard and member management
+- Public information page about the community
 - UI components and responsive design
 - Testing and validation
 - Deployment and monitoring

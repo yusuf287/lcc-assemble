@@ -3,7 +3,7 @@
 **Feature Branch**: `001-lcc-assemble-community`  
 **Created**: 2025-09-19  
 **Status**: Draft  
-**Input**: User description: "Comprehensive specification for LCC Assemble, a community event management platform for organizing potlucks, birthdays, and other gatherings with features like RSVP, bring lists, member directory, and admin controls."
+**Input**: User description: "Comprehensive specification for LCC Assemble, a community event management platform for organizing potlucks, birthdays, and other gatherings with features like RSVP, bring lists, member directory, admin controls, and an informational page about the Lakeshore Cultural Committee community."
 
 ## Execution Flow (main)
 ```
@@ -61,6 +61,7 @@ As a member of the LCC community, I want to easily organize and participate in e
 1. **Given** a user is registered and logged in, **When** they create a new event with details like title, date, location, and type, **Then** the event is saved, published to the community, and visible in the events list.
 2. **Given** an event is published, **When** a member RSVPs as going with a guest count, **Then** their attendance is recorded, the event's attendee count is updated, and they receive a confirmation notification.
 3. **Given** an event has an enabled bring list with items, **When** a member claims an available item, **Then** the item is assigned to them, marked as fulfilled, and other members cannot claim it.
+4. **Given** a visitor accesses the Info page, **When** they view the community information, **Then** they can see details about the Lakeshore Cultural Committee, what activities they organize, and how to get involved.
 
 ### Edge Cases
 - What happens when event capacity is reached? The system adds the user to a waitlist and notifies them of their position.
@@ -83,6 +84,7 @@ As a member of the LCC community, I want to easily organize and participate in e
 - **FR-010**: System MUST provide calendar integration for event scheduling
 - **FR-011**: System MUST support WhatsApp integration for quick messaging
 - **FR-012**: System MUST offer dietary preference tracking for better event planning
+- **FR-013**: System MUST provide a public information page about the Lakeshore Cultural Committee, including community description, activities, and contact information
 
 ### Key Entities
 - **User**: Represents community members with attributes like name, email, bio, interests, dietary preferences, and privacy settings. Related to events as organizers or attendees.

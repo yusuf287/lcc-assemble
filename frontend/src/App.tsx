@@ -5,7 +5,8 @@ import {
   Route,
   Navigate,
   createBrowserRouter,
-  RouterProvider
+  RouterProvider,
+  Link
 } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Toaster } from 'react-hot-toast'
@@ -21,6 +22,7 @@ import CreateEventPage from './pages/CreateEventPage'
 import MembersPage from './pages/MembersPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
+import InfoPage from './pages/InfoPage'
 
 // Components
 import { Button } from './components/ui/Button'
@@ -90,7 +92,9 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">LCC Assemble</h1>
+              <Link to="/info" className="text-xl font-bold text-gray-900 hover:text-orange-600 transition-colors">
+                LCC Assemble
+              </Link>
             </div>
 
             <div className="flex items-center space-x-4">
@@ -118,6 +122,12 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <nav className="bg-white shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex space-x-8">
+              <a
+                href="/info"
+                className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+              >
+                About
+              </a>
               <a
                 href="/dashboard"
                 className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
@@ -214,6 +224,7 @@ function App() {
             <Route path="/test" element={<TestPage />} />
 
             {/* Public Routes */}
+            <Route path="/info" element={<InfoPage />} />
             <Route
               path="/login"
               element={
@@ -292,7 +303,7 @@ function App() {
             />
 
             {/* Default Route */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to="/info" replace />} />
 
             {/* 404 Route */}
             <Route
