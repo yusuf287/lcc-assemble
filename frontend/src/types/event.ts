@@ -14,6 +14,7 @@ export interface Event {
   bringList: BringList
   attendees: Record<string, AttendeeInfo> // userId -> attendee info
   waitlist: string[] // user UIDs
+  invitedMembers?: string[] // user UIDs for private events
   status: EventStatus
   createdAt: Date
   updatedAt: Date
@@ -69,6 +70,7 @@ export interface EventCreationForm {
     enabled: boolean
     items: Omit<BringListItem, 'id' | 'assignedTo' | 'fulfilled'>[]
   }
+  invitedMembers?: string[] // User UIDs for private events
 }
 
 export interface EventUpdateForm extends Partial<EventCreationForm> {

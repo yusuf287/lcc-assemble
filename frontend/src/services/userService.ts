@@ -26,6 +26,23 @@ import {
 // Collection name
 const USERS_COLLECTION = 'users'
 
+// Helper function to convert Firestore timestamp to ISO string
+const timestampToISOString = (timestamp: any): string => {
+  if (timestamp?.toDate) {
+    // Firestore Timestamp
+    return timestamp.toDate().toISOString()
+  } else if (timestamp instanceof Date) {
+    // JavaScript Date
+    return timestamp.toISOString()
+  } else if (typeof timestamp === 'string') {
+    // ISO string already
+    return timestamp
+  } else {
+    // Fallback
+    return new Date().toISOString()
+  }
+}
+
 // Get user profile by UID
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
   try {
@@ -36,8 +53,8 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
       const data = userDoc.data() as User
       return {
         ...data,
-        createdAt: data.createdAt.toISOString(),
-        updatedAt: data.updatedAt.toISOString(),
+        createdAt: timestampToISOString(data.createdAt),
+        updatedAt: timestampToISOString(data.updatedAt),
       }
     }
 
@@ -416,8 +433,8 @@ export const onUserProfileChange = (
       const data = doc.data() as User
       const profile: UserProfile = {
         ...data,
-        createdAt: data.createdAt.toISOString(),
-        updatedAt: data.updatedAt.toISOString(),
+        createdAt: timestampToISOString(data.createdAt),
+        updatedAt: timestampToISOString(data.updatedAt),
       }
       callback(profile)
     } else {

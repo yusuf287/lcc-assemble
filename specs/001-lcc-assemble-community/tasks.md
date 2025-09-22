@@ -90,6 +90,15 @@
 - [x] T041 [P] BringList component in frontend/src/components/events/BringListManager.tsx (FULLY IMPLEMENTED)
 - [x] T042 [P] NotificationCenter component in frontend/src/components/notifications/NotificationCenter.tsx (FULLY IMPLEMENTED)
 - [x] T043 [P] Info page component in frontend/src/pages/InfoPage.tsx (FULLY IMPLEMENTED)
+- [x] T044 [P] MemberSelector component for private event invitations in frontend/src/components/events/MemberSelector.tsx (FULLY IMPLEMENTED)
+- [x] T045 Update CreateEventPage to support private events with inline member selection (FULLY IMPLEMENTED - IMPROVED UX)
+- [x] T046 Add date/time validation to prevent past selections in CreateEventPage (FULLY IMPLEMENTED)
+- [x] T047 Install and configure Leaflet for map integration (FULLY IMPLEMENTED)
+- [x] T048 [P] MapDisplay component for event locations in frontend/src/components/ui/MapDisplay.tsx (FULLY IMPLEMENTED)
+- [x] T049 Integrate map display in event creation and viewing (FULLY IMPLEMENTED)
+- [x] T050 [P] EditEventPage component in frontend/src/pages/EditEventPage.tsx (FULLY IMPLEMENTED)
+- [x] T051 Add /events/:id/edit route to App.tsx (FULLY IMPLEMENTED)
+- [x] T052 Update EventDetailsPage to show Edit button only for organizers (ALREADY IMPLEMENTED)
 
 ## Phase 3.4: Integration
 - [x] T043 Connect authentication to Firebase Auth
@@ -131,7 +140,7 @@
 - Setup tasks (T001-T005) before all other tasks
 - Test tasks (T006-T014) before implementation tasks (T015-T055)
 - TypeScript interfaces (T015-T018) before services (T021-T024)
-- Services (T021-T024) before page components (T025-T033, T043)
+- Services (T021-T024) before page components (T025-T033, T043, T050)
 - UI components (T034-T042) before page components (T025-T033)
 - Core implementation (T015-T042) before integration (T043-T055)
 - Integration (T043-T055) before polish (T056-T074)
@@ -238,5 +247,5 @@ kilo task "Implement notification service" --file frontend/src/services/notifica
 - [x] Dependencies properly mapped and documented
 
 ## Implementation Status Summary
-- ✅ **COMPLETED**: Setup (T001-T005), Types (T015-T018), Services (T019-T024), All Pages (T025-T033, T043), All Components (T034-T042), Integration (T043-T051)
+- ✅ **COMPLETED**: Setup (T001-T005), Types (T015-T018), Services (T019-T024), All Pages (T025-T033, T043, T050), All Components (T034-T042, T044, T048), Integration (T043-T051), Enhanced Event Features (T044-T052)
 - ❌ **NOT IMPLEMENTED**: Advanced Features (T052-T055), Tests (T008-T014), Polish (T056-T074)

@@ -8,6 +8,7 @@ import { getEvent, rsvpToEvent, onEventChange } from '../services/eventService'
 import { getUserProfile } from '../services/userService'
 import { RSVPComponent } from '../components/events/RSVPComponent'
 import { BringListComponent } from '../components/events/BringListComponent'
+import MapDisplay from '../components/ui/MapDisplay'
 import { Event, UserProfile } from '../types'
 import toast from 'react-hot-toast'
 
@@ -231,11 +232,18 @@ const EventDetailsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center">
-                <span className="text-2xl mr-3">📍</span>
-                <div>
+              <div className="flex items-start">
+                <span className="text-2xl mr-3 mt-1">📍</span>
+                <div className="flex-1">
                   <p className="font-medium">{event.location.name}</p>
-                  <p className="text-sm text-gray-600">{event.location.address}</p>
+                  <p className="text-sm text-gray-600 mb-3">{event.location.address}</p>
+                  <MapDisplay
+                    address={event.location.address}
+                    locationName={event.location.name}
+                    coordinates={event.location.coordinates}
+                    height="200px"
+                    className="border border-gray-200 rounded-lg"
+                  />
                 </div>
               </div>
 

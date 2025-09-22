@@ -19,6 +19,7 @@ import DashboardPage from './pages/DashboardPage'
 import EventsPage from './pages/EventsPage'
 import EventDetailsPage from './pages/EventDetailsPage'
 import CreateEventPage from './pages/CreateEventPage'
+import EditEventPage from './pages/EditEventPage'
 import MembersPage from './pages/MembersPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
@@ -272,6 +273,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <EventDetailsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/events/:eventId/edit"
+              element={
+                <ProtectedRoute>
+                  <EditEventPage />
                 </ProtectedRoute>
               }
             />

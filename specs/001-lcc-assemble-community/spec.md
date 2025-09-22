@@ -62,6 +62,10 @@ As a member of the LCC community, I want to easily organize and participate in e
 2. **Given** an event is published, **When** a member RSVPs as going with a guest count, **Then** their attendance is recorded, the event's attendee count is updated, and they receive a confirmation notification.
 3. **Given** an event has an enabled bring list with items, **When** a member claims an available item, **Then** the item is assigned to them, marked as fulfilled, and other members cannot claim it.
 4. **Given** a visitor accesses the Info page, **When** they view the community information, **Then** they can see details about the Lakeshore Cultural Committee, what activities they organize, and how to get involved.
+5. **Given** a user creates a private event, **When** they select specific members to invite, **Then** only those invited members can see and RSVP to the event.
+6. **Given** a user is creating an event, **When** they try to select a past date or time, **Then** the system prevents the selection and shows a validation error.
+7. **Given** a user views an event with an address, **When** they look at the location section, **Then** they can see a map displaying the event location.
+8. **Given** an event organizer clicks "Edit Event", **When** they modify event details, **Then** the changes are saved and visible to appropriate users based on privacy settings.
 
 ### Edge Cases
 - What happens when event capacity is reached? The system adds the user to a waitlist and notifies them of their position.
@@ -85,6 +89,10 @@ As a member of the LCC community, I want to easily organize and participate in e
 - **FR-011**: System MUST support WhatsApp integration for quick messaging
 - **FR-012**: System MUST offer dietary preference tracking for better event planning
 - **FR-013**: System MUST provide a public information page about the Lakeshore Cultural Committee, including community description, activities, and contact information
+- **FR-014**: System MUST support private events with selective member invitations, where only invited users can view and participate
+- **FR-015**: System MUST prevent selection of past dates and times during event creation with clear validation feedback
+- **FR-016**: System MUST display event addresses on interactive maps for better location visualization
+- **FR-017**: System MUST allow event organizers to edit event details with proper permission controls
 
 ### Key Entities
 - **User**: Represents community members with attributes like name, email, bio, interests, dietary preferences, and privacy settings. Related to events as organizers or attendees.

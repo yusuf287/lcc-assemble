@@ -1,11 +1,11 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
-import { createEvent, uploadEventImage } from '../services/eventService'
+import { getEvent, updateEvent, uploadEventImage } from '../services/eventService'
 import { EventCreationForm, EventType, EventVisibility } from '../types'
 import MemberSelector from '../components/events/MemberSelector'
 import MapDisplay from '../components/ui/MapDisplay'
@@ -15,8 +15,9 @@ import toast from 'react-hot-toast'
 const STEPS = [
   { id: 'basic', title: 'Basic Info', description: 'Event title and description' },
   { id: 'details', title: 'Details', description: 'Date, time, and location' },
-  { id: 'settings', title: 'Settings', description: 'Privacy, capacity, and invitations' },
-  { id: 'review', title: 'Review', description: 'Review and publish' }
+  { id: 'settings', title: 'Settings', description: 'Privacy and capacity' },
+  { id: 'invites', title: 'Invitations', description: 'Invite specific members (private events only)' },
+  { id: 'review', title: 'Review', description: 'Review and save changes' }
 ]
 
 const EVENT_TYPES: { value: EventType; label: string; icon: string }[] = [
@@ -27,14 +28,18 @@ const EVENT_TYPES: { value: EventType; label: string; icon: string }[] = [
   { value: 'other', label: 'Other', icon: '📅' }
 ]
 
-const CreateEventPage: React.FC = () => {
+const EditEventPage: React.FC = () => {
+  const { eventId } = useParams<{ eventId: string }>()
   const { user } = useAuth()
   const navigate = useNavigate()
+
   const [currentStep, setCurrentStep] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null)
   const [coverImagePreview, setCoverImagePreview] = useState<string>('')
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
+  const [originalEvent, setOriginalEvent] = useState<any>(null)
 
   // Form data
   const [formData, setFormData] = useState<EventCreationForm>({
@@ -43,7 +48,7 @@ const CreateEventPage: React.FC = () => {
     type: 'other',
     visibility: 'public',
     dateTime: new Date(),
-    duration: 120, // 2 hours
+    duration: 120,
     location: {
       name: '',
       address: '',
@@ -60,6 +65,61 @@ const CreateEventPage: React.FC = () => {
 
   // Form validation
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (eventId) {
+      loadEvent()
+    }
+  }, [eventId])
+
+  const loadEvent = async () => {
+    if (!eventId || !user) return
+
+    try {
+      setIsLoading(true)
+      const eventData = await getEvent(eventId)
+
+      if (!eventData) {
+        toast.error('Event not found')
+        navigate('/events')
+        return
+      }
+
+      // Check if user is the organizer
+      if (eventData.organizer !== user.uid) {
+        toast.error('You do not have permission to edit this event')
+        navigate(`/events/${eventId}`)
+        return
+      }
+
+      setOriginalEvent(eventData)
+
+      // Populate form data
+      setFormData({
+        title: eventData.title,
+        description: eventData.description,
+        type: eventData.type,
+        visibility: eventData.visibility,
+        dateTime: eventData.dateTime,
+        duration: eventData.duration,
+        location: eventData.location,
+        capacity: eventData.capacity,
+        coverImage: undefined,
+        bringList: eventData.bringList,
+        invitedMembers: eventData.invitedMembers || []
+      })
+
+      setSelectedMembers(eventData.invitedMembers || [])
+      setCoverImagePreview(eventData.coverImage || '')
+
+    } catch (error) {
+      console.error('Error loading event:', error)
+      toast.error('Failed to load event')
+      navigate('/events')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {}
@@ -79,10 +139,13 @@ const CreateEventPage: React.FC = () => {
         if (formData.duration < 30) newErrors.duration = 'Duration must be at least 30 minutes'
         break
 
-      case 2: // Settings (including invites for private events)
+      case 2: // Settings
         if (formData.capacity && formData.capacity < 1) {
           newErrors.capacity = 'Capacity must be at least 1'
         }
+        break
+
+      case 3: // Invites
         if (formData.visibility === 'private' && selectedMembers.length === 0) {
           newErrors.invites = 'Private events must have at least one invited member'
         }
@@ -95,7 +158,14 @@ const CreateEventPage: React.FC = () => {
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1))
+      let nextStep = currentStep + 1
+
+      // Skip invites step if event is public
+      if (currentStep === 2 && formData.visibility === 'public') {
+        nextStep = 4 // Skip to review
+      }
+
+      setCurrentStep(Math.min(nextStep, STEPS.length - 1))
     }
   }
 
@@ -210,10 +280,7 @@ const CreateEventPage: React.FC = () => {
   }
 
   const handleSubmit = async () => {
-    if (!user) {
-      toast.error('You must be logged in to create an event')
-      return
-    }
+    if (!eventId || !user) return
 
     try {
       setIsSubmitting(true)
@@ -224,8 +291,8 @@ const CreateEventPage: React.FC = () => {
         invitedMembers: formData.visibility === 'private' ? selectedMembers : []
       }
 
-      // Create the event
-      const eventId = await createEvent(user.uid, eventData)
+      // Update the event
+      await updateEvent(eventId, eventData)
 
       // Upload cover image if provided
       if (coverImageFile) {
@@ -237,14 +304,14 @@ const CreateEventPage: React.FC = () => {
         }
       }
 
-      toast.success('Event created successfully!')
+      toast.success('Event updated successfully!')
 
       // Navigate to the event details page
       navigate(`/events/${eventId}`)
 
     } catch (error: any) {
-      console.error('Error creating event:', error)
-      toast.error(error.message || 'Failed to create event. Please try again.')
+      console.error('Error updating event:', error)
+      toast.error(error.message || 'Failed to update event. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -383,6 +450,7 @@ const CreateEventPage: React.FC = () => {
                 <MapDisplay
                   address={formData.location.address}
                   locationName={formData.location.name}
+                  coordinates={formData.location.coordinates}
                   height="200px"
                   className="border border-gray-200 rounded-lg"
                 />
@@ -536,33 +604,37 @@ const CreateEventPage: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        )
 
-            {/* Member Selection for Private Events */}
-            {formData.visibility === 'private' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Invite Members *
-                </label>
-                <p className="text-sm text-gray-600 mb-4">
-                  Select the community members you want to invite to this private event.
-                  Only invited members will be able to see and RSVP to the event.
+      case 3: // Invites (only for private events)
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Invite Members</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Select the community members you want to invite to this private event.
+                Only invited members will be able to see and RSVP to the event.
+              </p>
+            </div>
+
+            <MemberSelector
+              selectedMembers={selectedMembers}
+              onMembersChange={setSelectedMembers}
+              maxSelections={50}
+            />
+
+            {selectedMembers.length === 0 && (
+              <div className="bg-yellow-50 p-4 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  <strong>Note:</strong> You haven't selected any members yet. Private events require at least one invited member.
                 </p>
-
-                <MemberSelector
-                  selectedMembers={selectedMembers}
-                  onMembersChange={setSelectedMembers}
-                  maxSelections={50}
-                />
-
-                {errors.invites && (
-                  <p className="mt-1 text-sm text-red-600">{errors.invites}</p>
-                )}
               </div>
             )}
           </div>
         )
 
-      case 3: // Review
+      case 4: // Review
         return (
           <div className="space-y-6">
             <div className="bg-gray-50 p-6 rounded-lg">
@@ -609,7 +681,7 @@ const CreateEventPage: React.FC = () => {
 
               <div className="mt-6 p-4 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> Your event will be saved as a draft. You can review and publish it from the event details page.
+                  <strong>Note:</strong> Your changes will be saved and the event will be updated for all attendees.
                 </p>
               </div>
             </div>
@@ -621,30 +693,48 @@ const CreateEventPage: React.FC = () => {
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900">Create New Event</h1>
-        <p className="mt-2 text-gray-600">Bring your community together for memorable gatherings</p>
+        <h1 className="text-3xl font-bold text-gray-900">Edit Event</h1>
+        <p className="mt-2 text-gray-600">Update your event details and settings</p>
       </div>
 
       {/* Progress Indicator */}
       <div className="flex items-center justify-center space-x-4">
-        {STEPS.map((step, index) => (
-          <React.Fragment key={step.id}>
-            <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-              index <= currentStep ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
-              {index + 1}
-            </div>
-            {index < STEPS.length - 1 && (
-              <div className={`flex-1 h-1 ${
-                index < currentStep ? 'bg-orange-500' : 'bg-gray-200'
-              }`} />
-            )}
-          </React.Fragment>
-        ))}
+        {STEPS.map((step, index) => {
+          // Skip invites step in progress indicator if event is public
+          if (step.id === 'invites' && formData.visibility === 'public') {
+            return null
+          }
+
+          const adjustedIndex = step.id === 'invites' && formData.visibility === 'private' ? index :
+                               step.id === 'review' && formData.visibility === 'public' ? index - 1 : index
+
+          return (
+            <React.Fragment key={step.id}>
+              <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                index <= currentStep ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+                {adjustedIndex + 1}
+              </div>
+              {index < STEPS.length - 1 && step.id !== 'invites' && (
+                <div className={`flex-1 h-1 ${
+                  index < currentStep ? 'bg-orange-500' : 'bg-gray-200'
+                }`} />
+              )}
+            </React.Fragment>
+          )
+        })}
       </div>
 
       {/* Step Titles */}
@@ -670,6 +760,13 @@ const CreateEventPage: React.FC = () => {
         </Button>
 
         <div className="flex space-x-3">
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/events/${eventId}`)}
+          >
+            Cancel
+          </Button>
+
           {currentStep < STEPS.length - 1 ? (
             <Button
               type="button"
@@ -686,10 +783,10 @@ const CreateEventPage: React.FC = () => {
               {isSubmitting ? (
                 <>
                   <LoadingSpinner className="w-4 h-4 mr-2" />
-                  Creating Event...
+                  Saving Changes...
                 </>
               ) : (
-                'Create Event'
+                'Save Changes'
               )}
             </Button>
           )}
@@ -699,4 +796,4 @@ const CreateEventPage: React.FC = () => {
   )
 }
 
-export default CreateEventPage
+export default EditEventPage
