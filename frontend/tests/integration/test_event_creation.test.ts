@@ -60,8 +60,8 @@ describe('Event Creation Integration Tests', () => {
       expect(true).toBe(false) // This should fail - event creation not implemented yet
     })
 
-    it('should set event status to draft initially', () => {
-      // Test: New events start with 'draft' status
+    it('should set event status to published initially', () => {
+      // Test: New events start with 'published' status
       expect(true).toBe(false) // This should fail - event creation not implemented yet
     })
 

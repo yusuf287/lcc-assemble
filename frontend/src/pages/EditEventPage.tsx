@@ -5,10 +5,11 @@ import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
-import { getEvent, updateEvent, uploadEventImage } from '../services/eventService'
+import { getEvent, updateEvent, uploadEventImage, cancelEvent } from '../services/eventService'
 import { EventCreationForm, EventType, EventVisibility } from '../types'
 import MemberSelector from '../components/events/MemberSelector'
 import MapDisplay from '../components/ui/MapDisplay'
+import EventDeleteDialog from '../components/events/EventDeleteDialog'
 import toast from 'react-hot-toast'
 
 // Step definitions
@@ -40,6 +41,11 @@ const EditEventPage: React.FC = () => {
   const [coverImagePreview, setCoverImagePreview] = useState<string>('')
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
   const [originalEvent, setOriginalEvent] = useState<any>(null)
+
+  // Delete dialog state
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [deleteDialogStep, setDeleteDialogStep] = useState<'confirm' | 'warning'>('confirm')
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Form data
   const [formData, setFormData] = useState<EventCreationForm>({
@@ -88,6 +94,13 @@ const EditEventPage: React.FC = () => {
       // Check if user is the organizer
       if (eventData.organizer !== user.uid) {
         toast.error('You do not have permission to edit this event')
+        navigate(`/events/${eventId}`)
+        return
+      }
+
+      // Check if event is already cancelled or completed
+      if (eventData.status === 'cancelled' || eventData.status === 'completed') {
+        toast.error(`Cannot edit a ${eventData.status} event`)
         navigate(`/events/${eventId}`)
         return
       }
@@ -314,6 +327,46 @@ const EditEventPage: React.FC = () => {
       toast.error(error.message || 'Failed to update event. Please try again.')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleDeleteClick = () => {
+    setIsDeleteDialogOpen(true)
+    setDeleteDialogStep('confirm')
+  }
+
+  const handleDeleteConfirm = () => {
+    if (deleteDialogStep === 'confirm') {
+      // Move to warning step
+      setDeleteDialogStep('warning')
+    } else {
+      // Final confirmation - proceed with deletion
+      handleDeleteEvent()
+    }
+  }
+
+  const handleDeleteCancel = () => {
+    setIsDeleteDialogOpen(false)
+    setDeleteDialogStep('confirm')
+  }
+
+  const handleDeleteEvent = async () => {
+    if (!eventId || !user) return
+
+    try {
+      setIsDeleting(true)
+
+      await cancelEvent(eventId)
+
+      toast.success('Event cancelled successfully!')
+      navigate('/events')
+
+    } catch (error: any) {
+      console.error('Error cancelling event:', error)
+      toast.error(error.message || 'Failed to cancel event. Please try again.')
+    } finally {
+      setIsDeleting(false)
+      setIsDeleteDialogOpen(false)
     }
   }
 
@@ -767,6 +820,14 @@ const EditEventPage: React.FC = () => {
             Cancel
           </Button>
 
+          <Button
+            type="button"
+            className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-500"
+            onClick={handleDeleteClick}
+          >
+            Cancel Event
+          </Button>
+
           {currentStep < STEPS.length - 1 ? (
             <Button
               type="button"
@@ -792,6 +853,16 @@ const EditEventPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <EventDeleteDialog
+        isOpen={isDeleteDialogOpen}
+        eventTitle={formData.title}
+        step={deleteDialogStep}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        isLoading={isDeleting}
+      />
     </div>
   )
 }

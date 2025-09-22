@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Cancel Event API Contract",
+  "description": "Contract for cancelling events (soft delete)",
+  "type": "object",
+  "properties": {
+    "function": {
+      "type": "string",
+      "enum": ["cancelEvent"],
+      "description": "Service function name"
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "description": "Unique identifier of the event to cancel",
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        }
+      },
+      "required": ["eventId"]
+    },
+    "authentication": {
+      "type": "object",
+      "properties": {
+        "required": {
+          "type": "boolean",
+          "enum": [true]
+        },
+        "userId": {
+          "type": "string",
+          "description": "Authenticated user must be the event organizer"
+        }
+      }
+    },
+    "preconditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "enum": [
+        "Event exists in database",
+        "Event status is not 'completed' or 'cancelled'",
+        "Authenticated user is the event organizer"
+      ]
+    },
+    "postconditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "enum": [
+        "Event status changed to 'cancelled'",
+        "Event updatedAt timestamp updated",
+        "All other event data preserved (RSVPs, bring list, etc.)",
+        "No cascade deletions performed"
+      ]
+    },
+    "responses": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "object",
+          "properties": {
+            "statusCode": {
+              "type": "integer",
+              "enum": [200]
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "enum": [true]
+                },
+                "message": {
+                  "type": "string",
+                  "pattern": "Event cancelled successfully"
+                }
+              },
+              "required": ["success", "message"]
+            }
+          }
+        },
+        "eventNotFound": {
+          "type": "object",
+          "properties": {
+            "statusCode": {
+              "type": "integer",
+              "enum": [404]
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "enum": [false]
+                },
+                "message": {
+                  "type": "string",
+                  "pattern": "Event not found"
+                }
+              }
+            }
+          }
+        },
+        "unauthorized": {
+          "type": "object",
+          "properties": {
+            "statusCode": {
+              "type": "integer",
+              "enum": [403]
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "enum": [false]
+                },
+                "message": {
+                  "type": "string",
+                  "pattern": "You do not have permission to cancel this event"
+                }
+              }
+            }
+          }
+        },
+        "invalidStatus": {
+          "type": "object",
+          "properties": {
+            "statusCode": {
+              "type": "integer",
+              "enum": [409]
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "enum": [false]
+                },
+                "message": {
+                  "type": "string",
+                  "pattern": "Cannot cancel a completed or already cancelled event"
+                }
+              }
+            }
+          }
+        },
+        "serverError": {
+          "type": "object",
+          "properties": {
+            "statusCode": {
+              "type": "integer",
+              "enum": [500]
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "enum": [false]
+                },
+                "message": {
+                  "type": "string",
+                  "pattern": "Failed to cancel event"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "sideEffects": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "enum": [
+        "Event appears as cancelled in all listings",
+        "Attendees receive notification of cancellation",
+        "Event details remain accessible for transparency"
+      ]
+    },
+    "performance": {
+      "type": "object",
+      "properties": {
+        "expectedLatency": {
+          "type": "string",
+          "pattern": "< 2 seconds"
+        },
+        "databaseOperations": {
+          "type": "integer",
+          "enum": [1],
+          "description": "Single document update operation"
+        }
+      }
+    }
+  },
+  "required": ["function", "parameters", "authentication", "preconditions", "postconditions", "responses"]
+}
