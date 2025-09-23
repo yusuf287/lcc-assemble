@@ -16,6 +16,4 @@ jobs:
       - run: cd frontend && npm ci
       - run: cd frontend && npm run build
       - name: Deploy to Firebase Hosting
-        run: |
-          cd frontend
-          npx firebase-tools hosting:channel:deploy --project lcc-assemble-49d97 --channel pr-${{ github.event.number }} --expires 7d --token ${{ secrets.FIREBASE_TOKEN }}
+        run: npx firebase-tools hosting:channel:deploy --project lcc-assemble-49d97 --channel pr-${{ github.event.number }} --expires 7d --token ${{ secrets.FIREBASE_TOKEN }}
