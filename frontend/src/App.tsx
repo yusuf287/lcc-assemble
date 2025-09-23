@@ -14,6 +14,7 @@ import { Toaster } from 'react-hot-toast'
 // Pages
 import LoginPage from './pages/LoginPage'
 import RegistrationPage from './pages/RegistrationPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import EmailVerificationPage from './pages/EmailVerificationPage'
 import TestPage from './pages/TestPage'
 import DashboardPage from './pages/DashboardPage'
@@ -240,6 +241,14 @@ function App() {
               element={
                 <PublicRoute>
                   <RegistrationPage />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/forgot-password"
+              element={
+                <PublicRoute>
+                  <ForgotPasswordPage />
                 </PublicRoute>
               }
             />

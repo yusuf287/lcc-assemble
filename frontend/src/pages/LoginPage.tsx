@@ -94,10 +94,18 @@ const LoginPage: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="text-sm">
                 <Link
+                  to="/forgot-password"
+                  className="font-medium text-blue-600 hover:text-blue-500"
+                >
+                  Forgot your password?
+                </Link>
+              </div>
+              <div className="text-sm">
+                <Link
                   to="/register"
                   className="font-medium text-blue-600 hover:text-blue-500"
                 >
-                  Don't have an account? Sign up
+                  Sign up
                 </Link>
               </div>
             </div>

@@ -1,8 +1,9 @@
 # Feature Specification: LCC Assemble
 
-**Feature Branch**: `001-lcc-assemble-community`  
-**Created**: 2025-09-19  
-**Status**: Draft  
+**Feature Branch**: `001-lcc-assemble-community`
+**Created**: 2025-09-19
+**Status**: Final
+**Last Updated**: 2025-09-23
 **Input**: User description: "Comprehensive specification for LCC Assemble, a community event management platform for organizing potlucks, birthdays, and other gatherings with features like RSVP, bring lists, member directory, admin controls, and an informational page about the Lakeshore Cultural Committee community."
 
 ## Execution Flow (main)
@@ -66,12 +67,15 @@ As a member of the LCC community, I want to easily organize and participate in e
 6. **Given** a user is creating an event, **When** they try to select a past date or time, **Then** the system prevents the selection and shows a validation error.
 7. **Given** a user views an event with an address, **When** they look at the location section, **Then** they can see a map displaying the event location.
 8. **Given** an event organizer clicks "Edit Event", **When** they modify event details, **Then** the changes are saved and visible to appropriate users based on privacy settings.
+9. **Given** a user has forgotten their password, **When** they enter their email on the forgot password page, **Then** they receive a password reset email with instructions to create a new password.
 
 ### Edge Cases
 - What happens when event capacity is reached? The system adds the user to a waitlist and notifies them of their position.
 - How does the system handle duplicate RSVPs from the same user? The system updates the existing RSVP with the latest response and prevents multiple entries.
 - What happens if an event organizer cancels an event? The system notifies all attendees via email and in-app notifications, updates the event status to cancelled, and removes it from active listings.
 - How does the system manage conflicts in bring list claims? If two users claim the same item simultaneously, the system assigns it to the first claimant and notifies the second user that the item is no longer available.
+- What happens when a user requests password reset for a non-existent email? The system shows a generic message without revealing whether the email exists in the system for security reasons.
+- How does the system handle multiple password reset requests? The system allows users to request password resets but implements rate limiting to prevent abuse.
 
 ## Requirements *(mandatory)*
 
@@ -93,6 +97,7 @@ As a member of the LCC community, I want to easily organize and participate in e
 - **FR-015**: System MUST prevent selection of past dates and times during event creation with clear validation feedback
 - **FR-016**: System MUST display event addresses on interactive maps for better location visualization
 - **FR-017**: System MUST allow event organizers to edit event details with proper permission controls
+- **FR-018**: System MUST provide password reset functionality for users who have forgotten their passwords, allowing them to receive a secure reset link via email
 
 ### Key Entities
 - **User**: Represents community members with attributes like name, email, bio, interests, dietary preferences, and privacy settings. Related to events as organizers or attendees.
@@ -130,5 +135,6 @@ As a member of the LCC community, I want to easily organize and participate in e
 - [x] Requirements generated
 - [x] Entities identified
 - [x] Review checklist passed
+- [x] Password reset functionality implemented and documented
 
 ---

@@ -99,6 +99,9 @@
 - [x] T050 [P] EditEventPage component in frontend/src/pages/EditEventPage.tsx (FULLY IMPLEMENTED)
 - [x] T051 Add /events/:id/edit route to App.tsx (FULLY IMPLEMENTED)
 - [x] T052 Update EventDetailsPage to show Edit button only for organizers (ALREADY IMPLEMENTED)
+- [x] T053 [P] ForgotPasswordPage component in frontend/src/pages/ForgotPasswordPage.tsx (FULLY IMPLEMENTED)
+- [x] T054 Add /forgot-password route to App.tsx (FULLY IMPLEMENTED)
+- [x] T055 Update LoginPage to include "Forgot Password" link (FULLY IMPLEMENTED)
 
 ## Phase 3.4: Integration
 - [x] T043 Connect authentication to Firebase Auth
@@ -231,10 +234,11 @@ kilo task "Implement notification service" --file frontend/src/services/notifica
    - Admin approval → T014 integration test [P]
 
 4. **From User Stories** (continued):
-    - Community information page → T043 Info page [P]
+     - Community information page → T043 Info page [P]
+     - Password reset functionality → T053-T055 password reset feature [P]
 
 5. **From Quickstart Scenarios**:
-    - End-to-end user journey → T071 e2e testing
+     - End-to-end user journey → T071 e2e testing
 
 ## Validation Checklist
 - [ ] All contracts have corresponding tests (T006-T008) - PARTIALLY IMPLEMENTED (T006-T007 done, T008 pending)
@@ -247,5 +251,5 @@ kilo task "Implement notification service" --file frontend/src/services/notifica
 - [x] Dependencies properly mapped and documented
 
 ## Implementation Status Summary
-- ✅ **COMPLETED**: Setup (T001-T005), Types (T015-T018), Services (T019-T024), All Pages (T025-T033, T043, T050), All Components (T034-T042, T044, T048), Integration (T043-T051), Enhanced Event Features (T044-T052)
+- ✅ **COMPLETED**: Setup (T001-T005), Types (T015-T018), Services (T019-T024), All Pages (T025-T033, T043, T050, T053), All Components (T034-T042, T044, T048), Integration (T043-T051), Enhanced Event Features (T044-T052), Password Reset Feature (T053-T055)
 - ❌ **NOT IMPLEMENTED**: Advanced Features (T052-T055), Tests (T008-T014), Polish (T056-T074)
