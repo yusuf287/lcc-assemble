@@ -189,33 +189,33 @@ const MemberProfilePage: React.FC = () => {
 
             {/* Contact Buttons */}
             {!isCurrentUser && (
-              <div className="space-y-2 mt-4">
+              <div className="flex justify-center space-x-3 mt-4">
                 <Button
                   onClick={() => handleContact('whatsapp')}
-                  className="w-full flex items-center justify-center space-x-2"
+                  className="p-3 h-12 w-12 rounded-full"
                   disabled={!member.whatsappNumber || !member.privacy?.whatsappVisible}
+                  title="WhatsApp"
                 >
-                  <span>💬</span>
-                  <span>WhatsApp</span>
+                  💬
                 </Button>
 
                 <Button
                   onClick={() => handleContact('phone')}
                   variant="outline"
-                  className="w-full flex items-center justify-center space-x-2"
+                  className="p-3 h-12 w-12 rounded-full"
                   disabled={!member.phoneNumber || !member.privacy?.phoneVisible}
+                  title="Call"
                 >
-                  <span>📞</span>
-                  <span>Call</span>
+                  📞
                 </Button>
 
                 <Button
                   onClick={() => handleContact('email')}
                   variant="outline"
-                  className="w-full flex items-center justify-center space-x-2"
+                  className="p-3 h-12 w-12 rounded-full"
+                  title="Email"
                 >
-                  <span>✉️</span>
-                  <span>Email</span>
+                  ✉️
                 </Button>
               </div>
             )}

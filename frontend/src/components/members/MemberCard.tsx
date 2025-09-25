@@ -135,28 +135,28 @@ export const MemberCard: React.FC<MemberCardProps> = ({
                   size="sm"
                   variant="outline"
                   onClick={() => handleContact('whatsapp')}
-                  className="flex items-center space-x-1"
+                  className="p-2 h-9 w-9"
+                  title="WhatsApp"
                 >
-                  <span>💬</span>
-                  <span>WhatsApp</span>
+                  💬
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => handleContact('phone')}
-                  className="flex items-center space-x-1"
+                  className="p-2 h-9 w-9"
+                  title="Call"
                 >
-                  <span>📞</span>
-                  <span>Call</span>
+                  📞
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => handleContact('email')}
-                  className="flex items-center space-x-1"
+                  className="p-2 h-9 w-9"
+                  title="Email"
                 >
-                  <span>✉️</span>
-                  <span>Email</span>
+                  ✉️
                 </Button>
               </div>
             )}
