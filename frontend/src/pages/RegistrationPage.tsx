@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate } from 'react-router-dom'
@@ -12,22 +12,23 @@ import { userRegistrationSchema, UserRegistrationForm } from '../validation/sche
 const RegistrationPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
-  const [privacyStepInteracted, setPrivacyStepInteracted] = useState(false)
   const navigate = useNavigate()
   const { register, error, clearError } = useAuth()
 
   const {
     control,
     handleSubmit,
-    formState: { errors, isValid },
+    formState: { errors },
     watch,
     setValue,
     trigger
   } = useForm<UserRegistrationForm>({
     resolver: zodResolver(userRegistrationSchema),
-    mode: 'onBlur', // Change to onBlur to prevent auto-advancement
+    mode: 'onSubmit', // Only validate on form submission to prevent auto-submission
     defaultValues: {
       email: '',
+      password: '',
+      confirmPassword: '',
       displayName: '',
       phoneNumber: '',
       whatsappNumber: '',
@@ -49,6 +50,17 @@ const RegistrationPage: React.FC = () => {
 
   const watchedInterests = watch('interests')
   const watchedDietaryPreferences = watch('dietaryPreferences')
+  const watchedPhoneNumber = watch('phoneNumber')
+  const watchedWhatsappNumber = watch('whatsappNumber')
+  const watchedAddress = watch('address')
+  const watchedPrivacy = watch('privacy')
+
+  // Debug privacy values when step 4 is reached
+  useEffect(() => {
+    if (currentStep === 4) {
+      console.log('🎯 Step 4 reached, privacy values:', watchedPrivacy)
+    }
+  }, [currentStep, watchedPrivacy])
 
   // Clear error when user interacts with form
   const clearFormError = () => {
@@ -67,10 +79,23 @@ const RegistrationPage: React.FC = () => {
     'Kosher', 'Halal', 'Low-Carb', 'Paleo', 'Mediterranean'
   ]
 
-  const onSubmit = async (data: UserRegistrationForm) => {
+  const handleFormSubmit = async () => {
+    console.log('🔥 handleFormSubmit called with currentStep:', currentStep)
+
+    // Prevent submission from any step other than step 4
+    if (currentStep !== 4) {
+      console.log('❌ Attempted to submit form from step', currentStep, '- blocking submission')
+      return
+    }
+
+    console.log('✅ Form submission allowed - on step 4')
+
     try {
       setIsLoading(true)
-      console.log('🚀 Starting registration submission...')
+      console.log('🚀 Starting registration submission from step 4...')
+
+      // Get form data
+      const data = watch()
       console.log('📝 Form data:', data)
 
       // Clear any previous errors
@@ -91,14 +116,10 @@ const RegistrationPage: React.FC = () => {
         return
       }
 
-      // Generate a secure temporary password
-      const tempPassword = Math.random().toString(36).slice(-12) + 'A1!'
-      console.log('🔑 Generated temporary password')
-
       console.log('📤 Calling register function...')
       await register(
         data.email,
-        tempPassword,
+        data.password,
         data.displayName,
         {
           phoneNumber: data.phoneNumber,
@@ -137,7 +158,6 @@ const RegistrationPage: React.FC = () => {
       })
 
       // Error is already handled by AuthContext and displayed via toast
-      // The AuthContext sets the error state which will be displayed
       if (error.message) {
         toast.error(error.message)
       } else {
@@ -150,38 +170,40 @@ const RegistrationPage: React.FC = () => {
   }
 
   const handleNextStep = async () => {
+    console.log('➡️ handleNextStep called for step', currentStep)
+
     let fieldsToValidate: (keyof UserRegistrationForm)[] = []
 
     // Define which fields to validate for each step
     switch (currentStep) {
       case 1:
-        fieldsToValidate = ['email', 'displayName']
+        fieldsToValidate = ['email', 'password', 'confirmPassword', 'displayName']
         break
       case 2:
-        fieldsToValidate = ['phoneNumber', 'whatsappNumber', 'bio']
-        // Validate address fields if any are filled
-        const addressValue = watch('address')
-        if (addressValue?.street || addressValue?.city || addressValue?.postalCode) {
-          fieldsToValidate.push('address.street' as keyof UserRegistrationForm)
-          fieldsToValidate.push('address.city' as keyof UserRegistrationForm)
-          fieldsToValidate.push('address.postalCode' as keyof UserRegistrationForm)
-        }
+        fieldsToValidate = ['phoneNumber', 'whatsappNumber', 'bio', 'address' as keyof UserRegistrationForm]
         break
       case 3:
-        // Interests and dietary preferences are completely optional - no validation required
-        fieldsToValidate = []
+        // Interests and dietary preferences are now mandatory (at least 1 each)
+        fieldsToValidate = ['interests', 'dietaryPreferences']
         break
       case 4:
-        // Privacy settings are required
-        fieldsToValidate = ['privacy.phoneVisible' as keyof UserRegistrationForm, 'privacy.whatsappVisible' as keyof UserRegistrationForm, 'privacy.addressVisible' as keyof UserRegistrationForm]
+        // Privacy settings are always valid (booleans with defaults) - no validation required for step progression
+        fieldsToValidate = []
         break
       default:
         break
     }
 
+    console.log('🔍 Validating fields for step', currentStep, ':', fieldsToValidate)
+
     const isStepValid = await trigger(fieldsToValidate)
+    console.log('✅ Step validation result for step', currentStep, ':', isStepValid)
+
     if (isStepValid) {
+      console.log('➡️ Advancing to step', currentStep + 1)
       setCurrentStep(currentStep + 1)
+    } else {
+      console.log('❌ Step validation failed for step', currentStep)
     }
   }
 
@@ -264,7 +286,7 @@ const RegistrationPage: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
             {/* Step 1: Account Information */}
             {currentStep === 1 && (
               <div className="space-y-6">
@@ -308,12 +330,43 @@ const RegistrationPage: React.FC = () => {
                   )}
                 />
 
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <p className="text-sm text-blue-800">
-                    <strong>Note:</strong> You'll receive a secure temporary password after registration.
-                    You can change it later in your profile settings.
-                  </p>
-                </div>
+                <Controller
+                  name="password"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e)
+                        clearFormError()
+                      }}
+                      type="password"
+                      label="Password *"
+                      placeholder="Create a secure password"
+                      error={errors.password?.message}
+                      required
+                    />
+                  )}
+                />
+
+                <Controller
+                  name="confirmPassword"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e)
+                        clearFormError()
+                      }}
+                      type="password"
+                      label="Confirm Password *"
+                      placeholder="Confirm your password"
+                      error={errors.confirmPassword?.message}
+                      required
+                    />
+                  )}
+                />
               </div>
             )}
 
@@ -346,9 +399,10 @@ const RegistrationPage: React.FC = () => {
                       {...field}
                       value={field.value || ''}
                       type="tel"
-                      label="WhatsApp Number (Optional)"
+                      label="WhatsApp Number *"
                       placeholder="+1 (555) 123-4567"
                       error={errors.whatsappNumber?.message}
+                      required
                     />
                   )}
                 />
@@ -376,7 +430,8 @@ const RegistrationPage: React.FC = () => {
 
                 {/* Address Section */}
                 <div className="space-y-4">
-                  <h4 className="text-lg font-medium text-gray-900">Address (Optional)</h4>
+                  <h4 className="text-lg font-medium text-gray-900">Address *</h4>
+                  <p className="text-sm text-gray-600">* Required for community events and connections</p>
 
                   <Controller
                     name="address.street"
@@ -426,17 +481,17 @@ const RegistrationPage: React.FC = () => {
             {currentStep === 3 && (
               <div className="space-y-6">
                 <h3 className="text-xl font-semibold text-gray-900">Your Interests & Preferences</h3>
-                <p className="text-sm text-gray-600">Optional selections to help us connect you with like-minded community members</p>
+                <p className="text-sm text-gray-600">Help us connect you with like-minded community members</p>
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    💡 <strong>Tip:</strong> Select any interests or dietary preferences that match your lifestyle, or click "Next" to skip this step.
+                    💡 <strong>Required:</strong> Please select at least 1 interest and 1 dietary preference.
                   </p>
                 </div>
 
                 {/* Interests */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Interests (Select up to 10)
+                    Interests * (Select 1-10)
                   </label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {interestOptions.map((interest) => (
@@ -462,7 +517,7 @@ const RegistrationPage: React.FC = () => {
                 {/* Dietary Preferences */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Dietary Preferences (Select up to 10)
+                    Dietary Preferences * (Select 1-10)
                   </label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {dietaryOptions.map((preference) => (
@@ -509,17 +564,18 @@ const RegistrationPage: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={field.value}
-                          onChange={(e) => {
-                            field.onChange(e)
-                            setPrivacyStepInteracted(true)
-                          }}
+                          onChange={field.onChange}
                           onBlur={field.onBlur}
                           name={field.name}
                           ref={field.ref}
-                          className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                          disabled={!watchedPhoneNumber || watchedPhoneNumber.trim() === ''}
+                          className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                         />
-                        <label className="ml-2 text-sm text-gray-700">
+                        <label className={`ml-2 text-sm ${!watchedPhoneNumber || watchedPhoneNumber.trim() === '' ? 'text-gray-400' : 'text-gray-700'}`}>
                           Make phone number visible to other members
+                          {!watchedPhoneNumber || watchedPhoneNumber.trim() === '' && (
+                            <span className="text-xs text-gray-500 block">Add a phone number in the previous step to enable this option</span>
+                          )}
                         </label>
                       </div>
                     )}
@@ -533,17 +589,18 @@ const RegistrationPage: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={field.value}
-                          onChange={(e) => {
-                            field.onChange(e)
-                            setPrivacyStepInteracted(true)
-                          }}
+                          onChange={field.onChange}
                           onBlur={field.onBlur}
                           name={field.name}
                           ref={field.ref}
-                          className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                          disabled={!watchedWhatsappNumber || watchedWhatsappNumber.trim() === ''}
+                          className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                         />
-                        <label className="ml-2 text-sm text-gray-700">
+                        <label className={`ml-2 text-sm ${!watchedWhatsappNumber || watchedWhatsappNumber.trim() === '' ? 'text-gray-400' : 'text-gray-700'}`}>
                           Make WhatsApp number visible to other members
+                          {!watchedWhatsappNumber || watchedWhatsappNumber.trim() === '' && (
+                            <span className="text-xs text-gray-500 block">Add a WhatsApp number in the previous step to enable this option</span>
+                          )}
                         </label>
                       </div>
                     )}
@@ -552,25 +609,33 @@ const RegistrationPage: React.FC = () => {
                   <Controller
                     name="privacy.addressVisible"
                     control={control}
-                    render={({ field }) => (
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={(e) => {
-                            field.onChange(e)
-                            setPrivacyStepInteracted(true)
-                          }}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                          className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
-                        />
-                        <label className="ml-2 text-sm text-gray-700">
-                          Make address visible to other members
-                        </label>
-                      </div>
-                    )}
+                    render={({ field }) => {
+                      const hasAddress = watchedAddress &&
+                        (watchedAddress.street?.trim() ||
+                         watchedAddress.city?.trim() ||
+                         watchedAddress.postalCode?.trim())
+
+                      return (
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                            disabled={!hasAddress}
+                            className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
+                          <label className={`ml-2 text-sm ${!hasAddress ? 'text-gray-400' : 'text-gray-700'}`}>
+                            Make address visible to other members
+                            {!hasAddress && (
+                              <span className="text-xs text-gray-500 block">Add address information in the previous step to enable this option</span>
+                            )}
+                          </label>
+                        </div>
+                      )
+                    }}
                   />
                 </div>
 
@@ -610,16 +675,10 @@ const RegistrationPage: React.FC = () => {
                 </Button>
               ) : (
                 <Button
-                  type="submit"
-                  disabled={isLoading || !isValid || !privacyStepInteracted}
+                  type="button"
+                  disabled={isLoading}
                   className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={(e) => {
-                    // Prevent any accidental auto-submission
-                    if (!isValid || isLoading || !privacyStepInteracted) {
-                      e.preventDefault()
-                      return
-                    }
-                  }}
+                  onClick={handleFormSubmit}
                 >
                   {isLoading ? 'Creating Account...' : 'Join the Community'}
                 </Button>

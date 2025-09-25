@@ -67,7 +67,9 @@ As a member of the LCC community, I want to easily organize and participate in e
 6. **Given** a user is creating an event, **When** they try to select a past date or time, **Then** the system prevents the selection and shows a validation error.
 7. **Given** a user views an event with an address, **When** they look at the location section, **Then** they can see a map displaying the event location.
 8. **Given** an event organizer clicks "Edit Event", **When** they modify event details, **Then** the changes are saved and visible to appropriate users based on privacy settings.
-9. **Given** a user has forgotten their password, **When** they enter their email on the forgot password page, **Then** they receive a password reset email with instructions to create a new password.
+9. **Given** a user views the member directory, **When** they click "View Profile" on a member card, **Then** they can see detailed information about that member including their bio, interests, dietary preferences, availability, and contact options (subject to privacy settings).
+10. **Given** a user has forgotten their password, **When** they enter their email on the forgot password page, **Then** they receive a password reset email with instructions to create a new password.
+11. **Given** a user completes registration with their chosen password, **When** they verify their email, **Then** they can sign in with their chosen password to access the application.
 
 ### Edge Cases
 - What happens when event capacity is reached? The system adds the user to a waitlist and notifies them of their position.
@@ -98,6 +100,8 @@ As a member of the LCC community, I want to easily organize and participate in e
 - **FR-016**: System MUST display event addresses on interactive maps for better location visualization
 - **FR-017**: System MUST allow event organizers to edit event details with proper permission controls
 - **FR-018**: System MUST provide password reset functionality for users who have forgotten their passwords, allowing them to receive a secure reset link via email
+- **FR-019**: System MUST allow users to view detailed profiles of other community members from the member directory, respecting privacy settings for contact information visibility
+- **FR-020**: System MUST allow users to register with their chosen password and sign in after email verification
 
 ### Key Entities
 - **User**: Represents community members with attributes like name, email, bio, interests, dietary preferences, and privacy settings. Related to events as organizers or attendees.

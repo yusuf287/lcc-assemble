@@ -19,6 +19,7 @@ import { User as AppUser } from '../types'
 interface AuthContextType {
   user: AppUser | null
   loading: boolean
+  isRegistering: boolean
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, displayName: string, profileData?: any) => Promise<void>
   logout: () => Promise<void>
@@ -55,6 +56,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AppUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isRegistering, setIsRegistering] = useState(false)
 
   // Convert Firebase User to App User
   const convertFirebaseUser = async (firebaseUser: User): Promise<AppUser> => {
@@ -126,9 +128,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // DEVELOPMENT MODE: Skip email verification for testing
       if (import.meta.env.DEV && import.meta.env.VITE_SKIP_EMAIL_VERIFICATION === 'true') {
         console.log('🔧 DEVELOPMENT: Skipping email verification check')
-      } else if (!userCredential.user.emailVerified) {
-        await signOut(auth)
-        throw new Error('Please verify your email before logging in. Check your inbox for the verification link.')
+      } else {
+        // Reload user data to get latest email verification status
+        await userCredential.user.reload()
+        if (!userCredential.user.emailVerified) {
+          await signOut(auth)
+          throw new Error('Please verify your email before logging in. Check your inbox for the verification link.')
+        }
       }
 
       // Check user status
@@ -168,6 +174,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Register function
   const register = async (email: string, password: string, displayName: string, profileData?: any): Promise<void> => {
     try {
+      setIsRegistering(true)
       setError(null)
       console.log('🔥 Starting registration process...')
       console.log('📧 Email:', email)
@@ -225,6 +232,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Step 4: Send email verification
       console.log('🔥 Sending email verification...')
       try {
+        // Store email in localStorage for email verification link handling
+        window.localStorage.setItem('emailForSignIn', email)
+
         await sendEmailVerification(userCredential.user)
         console.log('✅ Email verification sent successfully')
       } catch (emailError: any) {
@@ -246,6 +256,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           })
         }
       }
+
+      // Sign out the user immediately after registration so they need to verify email before logging in
+      console.log('🔄 Signing out user after registration to require email verification...')
+      await signOut(auth)
+      console.log('✅ User signed out after registration')
 
       console.log('🎉 Registration completed successfully!')
 
@@ -274,6 +289,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       setError(errorMessage)
       throw new Error(errorMessage)
+    } finally {
+      setIsRegistering(false)
     }
   }
 
@@ -449,6 +466,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextType = {
     user,
     loading,
+    isRegistering,
     login,
     register,
     logout,

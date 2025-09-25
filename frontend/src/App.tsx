@@ -23,6 +23,7 @@ import EventDetailsPage from './pages/EventDetailsPage'
 import CreateEventPage from './pages/CreateEventPage'
 import EditEventPage from './pages/EditEventPage'
 import MembersPage from './pages/MembersPage'
+import MemberProfilePage from './pages/MemberProfilePage'
 import ProfilePage from './pages/ProfilePage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import InfoPage from './pages/InfoPage'
@@ -59,7 +60,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean 
 
 // Public Route Component (redirects to dashboard if already logged in)
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading } = useAuth()
+  const { user, loading, isRegistering } = useAuth()
 
   if (loading) {
     return (
@@ -69,7 +70,9 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     )
   }
 
-  if (user) {
+  // Don't redirect to dashboard during registration process
+  // The registration flow handles its own redirects
+  if (user && !isRegistering && window.location.pathname !== '/register') {
     return <Navigate to="/dashboard" replace />
   }
 
@@ -303,6 +306,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <MembersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/members/:memberId"
+              element={
+                <ProtectedRoute>
+                  <MemberProfilePage />
                 </ProtectedRoute>
               }
             />

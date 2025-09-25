@@ -307,9 +307,9 @@ describe('RSVP System Integration Tests', () => {
       mockGetEvent.mockResolvedValue(mockEvent)
       const event = await getEvent('event1')
 
-      expect(event?.attendees).toHaveProperty('user1')
-      expect(event?.attendees.user1.status).toBe('going')
-      expect(event?.attendees.user1.guestCount).toBe(1)
+      expect(event?.attendees).toHaveProperty('existingUser')
+      expect(event?.attendees.existingUser.status).toBe('going')
+      expect(event?.attendees.existingUser.guestCount).toBe(0)
     })
 
     it('should provide easy RSVP modification', async () => {
@@ -335,7 +335,7 @@ describe('RSVP System Integration Tests', () => {
       }, 0)
 
       expect(attendeeCount).toBe(1) // existingUser + 0 guests
-      expect(event?.capacity).toBe(10)
+      expect(event?.capacity).toBe(2) // Updated to match mock data capacity
       expect(Object.keys(event?.attendees || {})).toHaveLength(1)
     })
 

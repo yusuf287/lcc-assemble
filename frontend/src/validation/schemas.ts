@@ -6,6 +6,13 @@ export const userRegistrationSchema = z.object({
     .string()
     .min(1, 'Email is required')
     .email('Please enter a valid email address'),
+  password: z
+    .string()
+    .min(6, 'Password must be at least 6 characters')
+    .max(100, 'Password must be less than 100 characters'),
+  confirmPassword: z
+    .string()
+    .min(1, 'Please confirm your password'),
   displayName: z
     .string()
     .min(2, 'Display name must be at least 2 characters')
@@ -31,9 +38,11 @@ export const userRegistrationSchema = z.object({
     .optional(),
   interests: z
     .array(z.string())
+    .min(1, 'Please select at least 1 interest')
     .max(10, 'You can select up to 10 interests'),
   dietaryPreferences: z
     .array(z.string())
+    .min(1, 'Please select at least 1 dietary preference')
     .max(10, 'You can select up to 10 dietary preferences'),
   address: z
     .object({
@@ -47,6 +56,9 @@ export const userRegistrationSchema = z.object({
     whatsappVisible: z.boolean(),
     addressVisible: z.boolean()
   })
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"]
 })
 
 export const loginSchema = z.object({
@@ -161,9 +173,9 @@ export const profileUpdateSchema = z.object({
     ),
   whatsappNumber: z
     .string()
-    .optional()
+    .min(1, 'WhatsApp number is required')
     .refine(
-      (val) => !val || /^\+?[\d\s\-\(\)]{10,}$/.test(val),
+      (val) => /^\+?[\d\s\-\(\)]{10,}$/.test(val),
       'Please enter a valid WhatsApp number'
     ),
   bio: z
@@ -178,13 +190,11 @@ export const profileUpdateSchema = z.object({
     .array(z.string())
     .max(10, 'You can select up to 10 dietary preferences')
     .optional(),
-  address: z
-    .object({
-      street: z.string().min(1, 'Street address is required'),
-      city: z.string().min(1, 'City is required'),
-      postalCode: z.string().min(1, 'Postal code is required')
-    })
-    .optional(),
+  address: z.object({
+    street: z.string().min(1, 'Street address is required'),
+    city: z.string().min(1, 'City is required'),
+    postalCode: z.string().min(1, 'Postal code is required')
+  }),
   privacy: z.object({
     phoneVisible: z.boolean(),
     whatsappVisible: z.boolean(),

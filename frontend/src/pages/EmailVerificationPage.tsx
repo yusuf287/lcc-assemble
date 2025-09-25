@@ -6,6 +6,8 @@ import { Button } from '../components/ui/Button'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Alert } from '../components/ui/Alert'
 import toast from 'react-hot-toast'
+import { auth } from '../services/firebase'
+import { applyActionCode, signInWithEmailLink, isSignInWithEmailLink } from 'firebase/auth'
 
 const EmailVerificationPage: React.FC = () => {
   const navigate = useNavigate()
@@ -19,31 +21,100 @@ const EmailVerificationPage: React.FC = () => {
   const email = searchParams.get('email') || user?.email || ''
 
   useEffect(() => {
-    // Check verification status on component mount
-    const checkStatus = async () => {
-      if (user) {
-        setIsChecking(true)
-        try {
-          const status = await checkEmailVerificationStatus()
-          setVerificationStatus(status)
+    // Handle email verification link on component mount
+    const handleEmailVerification = async () => {
+      try {
+        // Check if this is an email verification link
+        if (isSignInWithEmailLink(auth, window.location.href)) {
+          console.log('🔗 Detected email verification link')
 
-          if (status) {
-            toast.success('Email verified successfully!')
-            // Redirect to dashboard after a short delay
+          // Get email from localStorage (set during registration) or URL params
+          let emailToVerify = window.localStorage.getItem('emailForSignIn')
+          if (!emailToVerify) {
+            emailToVerify = email // fallback to URL param
+          }
+
+          if (!emailToVerify) {
+            console.error('❌ No email found for verification')
+            toast.error('Unable to verify email. Please try registering again.')
+            navigate('/register')
+            return
+          }
+
+          setIsChecking(true)
+          console.log('📧 Verifying email for:', emailToVerify)
+
+          try {
+            // Complete the email verification
+            await signInWithEmailLink(auth, emailToVerify, window.location.href)
+            console.log('✅ Email verified and user signed in')
+
+            // Clear the email from localStorage
+            window.localStorage.removeItem('emailForSignIn')
+
+            // Update verification status
+            setVerificationStatus(true)
+
+            toast.success('Email verified successfully! Redirecting to dashboard...')
+
+            // Redirect to dashboard after a short delay since user is now signed in
             setTimeout(() => {
+              console.log('🚀 Redirecting to dashboard...')
               navigate('/dashboard')
             }, 2000)
+
+          } catch (verificationError: any) {
+            console.error('❌ Email verification failed:', verificationError)
+
+            // If it's an expired link, show appropriate message
+            if (verificationError.code === 'auth/expired-action-code') {
+              toast.error('Verification link has expired. Please request a new one.')
+            } else if (verificationError.code === 'auth/invalid-action-code') {
+              toast.error('Invalid verification link. Please check the link and try again.')
+            } else {
+              toast.error('Email verification failed. Please try again.')
+            }
+
+            navigate('/login')
+          } finally {
+            setIsChecking(false)
           }
-        } catch (error) {
-          console.error('Error checking verification status:', error)
-        } finally {
-          setIsChecking(false)
+        } else {
+          console.log('📧 Not an email verification link, checking current user status')
+
+          // Not a verification link - check current user's verification status
+          if (user && auth.currentUser) {
+            setIsChecking(true)
+            try {
+              const status = await checkEmailVerificationStatus()
+              setVerificationStatus(status)
+
+              if (status) {
+                console.log('✅ Email already verified, redirecting to login')
+                toast.success('Email verified successfully! You can now sign in.')
+                setTimeout(() => {
+                  navigate('/login')
+                }, 2000)
+              } else {
+                console.log('❌ Email not verified yet')
+              }
+            } catch (error) {
+              console.error('Error checking verification status:', error)
+            } finally {
+              setIsChecking(false)
+            }
+          } else {
+            console.log('⏳ Waiting for user authentication...')
+          }
         }
+      } catch (error) {
+        console.error('Error in email verification handling:', error)
+        setIsChecking(false)
       }
     }
 
-    checkStatus()
-  }, [user, checkEmailVerificationStatus, navigate])
+    handleEmailVerification()
+  }, [user, checkEmailVerificationStatus, navigate, email])
 
   const handleResendEmail = async () => {
     setIsResending(true)
@@ -59,20 +130,31 @@ const EmailVerificationPage: React.FC = () => {
   }
 
   const handleCheckAgain = async () => {
-    if (!user) return
+    // If user is not authenticated, they haven't verified their email yet
+    if (!user || !auth.currentUser) {
+      console.log('❌ User not authenticated - email not verified')
+      toast.error('Please click the verification link in your email first before trying to sign in.', {
+        icon: '❌',
+        duration: 5000
+      })
+      return
+    }
 
     setIsChecking(true)
     try {
+      console.log('🔍 Manual check: Checking email verification status...')
       const status = await checkEmailVerificationStatus()
+      console.log('📧 Manual check result:', status)
       setVerificationStatus(status)
 
       if (status) {
-        toast.success('Email verified successfully!')
+        toast.success('Email verified successfully! Redirecting to dashboard...')
+        console.log('🚀 Manual check: Redirecting to dashboard...')
         navigate('/dashboard')
       } else {
-        toast('Email not yet verified. Please check your inbox.', {
+        toast.error('Email not yet verified. Please check your inbox and click the verification link.', {
           icon: '📧',
-          duration: 4000
+          duration: 5000
         })
       }
     } catch (error: any) {
@@ -144,7 +226,8 @@ const EmailVerificationPage: React.FC = () => {
               <ul className="text-sm text-blue-800 space-y-1 text-left">
                 <li>1. Check your email inbox (and spam folder)</li>
                 <li>2. Click the "Verify Email" link in the email</li>
-                <li>3. You'll be automatically redirected to your dashboard</li>
+                <li>3. You'll be automatically signed in and redirected to the dashboard</li>
+                <li>4. If you return here manually, click "I've Clicked the Verification Link"</li>
               </ul>
             </div>
 
@@ -154,7 +237,7 @@ const EmailVerificationPage: React.FC = () => {
                 disabled={isChecking}
                 variant="outline"
               >
-                {isChecking ? 'Checking...' : 'I\'ve Verified My Email'}
+                {isChecking ? 'Checking...' : 'I\'ve Clicked the Verification Link'}
               </Button>
 
               <Button

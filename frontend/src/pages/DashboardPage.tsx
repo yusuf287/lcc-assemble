@@ -10,7 +10,7 @@ import { EventSummary, UserSummary } from '../types'
 import toast from 'react-hot-toast'
 
 const DashboardPage: React.FC = () => {
-  const { user, userProfile } = useAuth()
+  const { user, userProfile, loading } = useAuth()
   const navigate = useNavigate()
   const [upcomingEvents, setUpcomingEvents] = useState<EventSummary[]>([])
   const [recentMembers, setRecentMembers] = useState<UserSummary[]>([])
@@ -23,8 +23,11 @@ const DashboardPage: React.FC = () => {
   })
 
   useEffect(() => {
-    loadDashboardData()
-  }, [])
+    // Only load dashboard data if user is authenticated and not loading
+    if (user && !loading) {
+      loadDashboardData()
+    }
+  }, [user, loading])
 
   const loadDashboardData = async () => {
     try {
@@ -38,21 +41,32 @@ const DashboardPage: React.FC = () => {
       const membersResult = await searchUsers({ status: 'approved' }, 5)
       setRecentMembers(membersResult.users)
 
-      // Load stats
-      const [userEvents, userStats] = await Promise.all([
-        getUserEvents(user?.uid || ''),
-        getUserCountByStatus()
-      ])
+      // Load user events (only if user is authenticated)
+      let userEvents: EventSummary[] = []
+      if (user?.uid) {
+        try {
+          userEvents = await getUserEvents(user.uid)
+        } catch (error) {
+          console.warn('Could not load user events:', error)
+          // Continue without user events
+        }
+      }
+
+      // Only load admin stats if user is admin
+      let totalMembers = 0
+      if (user?.role === 'admin') {
+        try {
+          const userStats = await getUserCountByStatus()
+          totalMembers = userStats.approved + userStats.pending + userStats.suspended
+        } catch (error) {
+          console.warn('Could not load admin statistics:', error)
+          // Fallback: don't show member count for non-admin users
+        }
+      }
 
       setStats({
         totalEvents: eventsResult.totalCount,
-        totalMembers: userStats.approved + userStats.pending + userStats.suspended,
-        myEvents: userEvents.length
-      })
-
-      setStats({
-        totalEvents: eventsResult.totalCount,
-        totalMembers: userStats.approved + userStats.pending + userStats.suspended,
+        totalMembers,
         myEvents: userEvents.length
       })
     } catch (error) {

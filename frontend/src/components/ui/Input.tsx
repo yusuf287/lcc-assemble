@@ -9,7 +9,7 @@ interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, '
   className?: string
 }
 
-export const Input: React.FC<InputProps> = ({
+export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   type = 'text',
   name,
   value,
@@ -20,8 +20,9 @@ export const Input: React.FC<InputProps> = ({
   error,
   label,
   helperText,
-  className = ''
-}) => {
+  className = '',
+  ...props
+}, ref) => {
   const baseClasses = 'block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500'
   const errorClasses = error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''
   const disabledClasses = disabled ? 'bg-gray-100 cursor-not-allowed' : ''
@@ -36,6 +37,7 @@ export const Input: React.FC<InputProps> = ({
         </label>
       )}
       <input
+        ref={ref}
         type={type}
         name={name}
         id={name}
@@ -45,6 +47,7 @@ export const Input: React.FC<InputProps> = ({
         required={required}
         disabled={disabled}
         className={combinedClasses}
+        {...props}
       />
       {error && (
         <p className="text-sm text-red-600">{error}</p>
@@ -54,6 +57,8 @@ export const Input: React.FC<InputProps> = ({
       )}
     </div>
   )
-}
+})
+
+Input.displayName = 'Input'
 
 export default Input

@@ -11,9 +11,8 @@ const MembersPage: React.FC = () => {
 
   const handleMemberSelect = (member: UserSummary) => {
     setSelectedMember(member)
-    // Navigate to member profile or show modal
-    // For now, we'll just show a toast
-    toast.success(`Viewing profile for ${member.displayName}`)
+    // Navigate to member profile page
+    navigate(`/members/${member.uid}`)
   }
 
   const handleContactMember = async (member: UserSummary, method: 'whatsapp' | 'phone' | 'email') => {
