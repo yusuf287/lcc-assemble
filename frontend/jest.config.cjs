@@ -9,7 +9,9 @@ module.exports = {
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
       tsconfig: {
-        jsx: 'react-jsx'
+        jsx: 'react-jsx',
+        esModuleInterop: true,
+        allowSyntheticDefaultImports: true
       }
     }],
     '^.+\\.(js|jsx)$': 'babel-jest'
@@ -26,6 +28,15 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!(@firebase|firebase)/)'
   ],
+  globals: {
+    'ts-jest': {
+      tsconfig: {
+        jsx: 'react-jsx',
+        esModuleInterop: true,
+        allowSyntheticDefaultImports: true
+      }
+    }
+  },
   collectCoverageFrom: [
     'src/**/*.(ts|tsx)',
     '!src/**/*.d.ts',
